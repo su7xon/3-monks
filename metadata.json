@@ -1,0 +1,7 @@
+{
+  "name": "The III Monks - Premium Streetwear",
+  "description": "A luxury, high-end streetwear e-commerce platform featuring cinematic UI, seamless shopping experience, and a robust admin dashboard.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
