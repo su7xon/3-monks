@@ -49,14 +49,15 @@ export const INITIAL_PRODUCTS: Product[] = [
   {
     id: '4',
     name: 'ZENITH LEATHER TOTE',
-    description: 'Italian pebble-grain leather with magnetic closure and internal tech sleeve.',
+    description: 'Premium vegetable-tanned leather tote with laptop compartment and magnetic closure.',
     price: 450,
     category: 'Accessories',
     images: [
-      'https://images.unsplash.com/photo-1544816153-36bc1794309d?q=80&w=1974&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80&w=1938&auto=format&fit=crop'
     ],
     colors: ['Black'],
     sizes: ['One Size'],
-    stock: 5
+    stock: 5,
+    isNew: true
   }
 ];

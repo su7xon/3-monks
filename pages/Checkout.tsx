@@ -70,8 +70,14 @@ const Checkout: React.FC = () => {
       const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
       window.open(url, '_blank');
     } else if (paymentMethod === 'instagram') {
-
-      window.open('https://www.instagram.com/the_3monks_clo', '_blank');
+      const username = 'the_3monks_clo';
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        window.location.href = `instagram://user?username=${username}`;
+      } else {
+        window.open(`https://www.instagram.com/${username}`, '_blank');
+      }
     }
 
     clearCart();

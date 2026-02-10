@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig } from './types';
+import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story } from './types';
 import {
   saveProduct,
   deleteProduct,
@@ -16,7 +16,10 @@ import {
   saveProductTypes as saveProductTypesToFirebase,
   uploadImage,
   uploadImages,
-  deleteOrder as deleteOrderFromFirebase
+  deleteOrder as deleteOrderFromFirebase,
+  saveStory,
+  deleteStory,
+  subscribeToStories
 } from './firebase';
 
 interface CategoryWithId extends CategoryWithImage {
@@ -37,6 +40,9 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   contactPhone: '+91 9045848613',
   contactEmail: 'info@the3monks.com',
   contactAddress: 'Haldwani, Uttarakhand, India',
+  heroVideoUrl: 'https://player.vimeo.com/external/370331493.sd.mp4?s=27d04e137b2d58546b9a89c922a6132717a66e4a&profile_id=164&oauth2_token_id=57447761',
+  storyButtonText: 'Our Story',
+  storyButtonLink: '/about',
 };
 
 interface ShopContextType {
@@ -61,6 +67,9 @@ interface ShopContextType {
   productTypes: string[];
   setProductTypes: React.Dispatch<React.SetStateAction<string[]>>;
   saveProductTypes: () => Promise<void>;
+  stories: Story[];
+  addStory: (story: Story) => Promise<void>;
+  deleteStory: (storyId: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -72,6 +81,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [categories, setCategoriesState] = useState<CategoryWithId[]>([]); // Start empty to avoid flash
   const [siteConfig, setSiteConfigState] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [productTypes, setProductTypesState] = useState<string[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
@@ -124,33 +134,37 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProductTypesState(data);
     });
 
+    const unsubStories = subscribeToStories((data) => {
+      console.log('[Store] Stories received:', data.length);
+      setStories(data);
+    });
+
     return () => {
       unsubProducts();
       unsubOrders();
       unsubCategories();
       unsubConfig();
       unsubProductTypes();
+      unsubStories();
     };
   }, []);
 
   const addProduct = useCallback(async (product: Product) => {
     console.log('[Store] Adding product:', product.id);
     try {
-
       const imageUrls = await uploadImages(product.images || [], 'products', product.id);
       const productToSave = { ...product, images: imageUrls };
       await saveProduct(productToSave);
       console.log('[Store] Product saved successfully:', product.id);
     } catch (error) {
       console.error('[Store] Error saving product:', error);
-      throw error; // Re-throw so UI can handle it
+      throw error;
     }
   }, []);
 
   const updateProduct = useCallback(async (product: Product) => {
     console.log('[Store] Updating product:', product.id);
     try {
-
       const imageUrls = await uploadImages(product.images || [], 'products', product.id);
       const productToSave = { ...product, images: imageUrls };
       await saveProduct(productToSave);
@@ -210,6 +224,31 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   }, [productTypes]);
+
+  // Story operations
+  const addStory = useCallback(async (story: Story) => {
+    console.log('[Store] Adding story:', story.id);
+    try {
+      // Upload image
+      const imageUrl = await uploadImage(story.image, `stories/${story.id}/image_${Date.now()}.jpg`);
+      await saveStory({ ...story, image: imageUrl });
+      console.log('[Store] Story saved successfully!');
+    } catch (error) {
+      console.error('[Store] Error saving story:', error);
+      throw error;
+    }
+  }, []);
+
+  const deleteStoryFromStore = useCallback(async (storyId: string) => {
+    console.log('[Store] Deleting story:', storyId);
+    try {
+      await deleteStory(storyId);
+      console.log('[Store] Story deleted successfully!');
+    } catch (error) {
+      console.error('[Store] Error deleting story:', error);
+      throw error;
+    }
+  }, []);
 
   const setSiteConfig: React.Dispatch<React.SetStateAction<SiteConfig>> = useCallback((value) => {
     setSiteConfigState(prev => {
@@ -292,6 +331,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       productTypes,
       setProductTypes,
       saveProductTypes,
+      stories,
+      addStory,
+      deleteStory: deleteStoryFromStore,
       isLoading,
       deleteOrder
     }}>

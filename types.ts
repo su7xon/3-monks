@@ -14,6 +14,21 @@ export interface SiteConfig {
   contactPhone: string;
   contactEmail: string;
   contactAddress: string;
+  aboutImage?: string;
+  aboutTitle?: string;
+  aboutText?: string;
+  heroVideoUrl?: string;
+  storyButtonText?: string;
+  storyButtonLink?: string;
+}
+
+export interface Story {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  link?: string;
+  createdAt: number;
 }
 
 export interface Product {

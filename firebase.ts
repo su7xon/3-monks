@@ -17,43 +17,82 @@ const firebaseConfig = {
     messagingSenderId: "208195255915",
     appId: "1:208195255915:web:63f596ccbff48982797b2e",
     measurementId: "G-DX7KQNJ3R5"
-};
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
-const IMGBB_API_KEY = '09550b6c8854711695b1c1e5ca9b2ae2';
-export const uploadImage = async (base64Data: string, _path?: string): Promise<string> => {
+console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
+
+const CLOUDINARY_CLOUD_NAME = 'dnn0km7fu';
+const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
+
+export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
+    if (imageUrl.includes('cloudinary.com')) {
+        return imageUrl;
+    }
+
+    try {
+        console.log('[Cloudinary] Fetching image from URL...');
+        
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                try {
+                    const base64Data = reader.result as string;
+                    const uploadedUrl = await uploadImage(base64Data);
+                    resolve(uploadedUrl);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error: any) {
+        console.error('[Cloudinary] Migration failed:', error?.message || error);
+        return imageUrl;
+    }
+};
+
+export const uploadImage = async (base64Data: string, _path?: string): Promise<string> => {
     if (!base64Data.startsWith('data:image')) {
         return base64Data;
     }
 
     try {
-        console.log('[ImgBB] Uploading image...');
-        const base64Image = base64Data.split(',')[1];
+        console.log('[Cloudinary] Uploading image...');
 
         const formData = new FormData();
-        formData.append('image', base64Image);
-        formData.append('key', IMGBB_API_KEY);
+        formData.append('file', base64Data);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-        const response = await fetch('https://api.imgbb.com/1/upload', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
 
         const data = await response.json();
 
-        if (data.success) {
-            console.log('[ImgBB] Upload success:', data.data.url);
-            return data.data.url;
+        if (data.secure_url) {
+            const optimizedUrl = data.secure_url.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
+            console.log('[Cloudinary] Upload success:', optimizedUrl);
+            return optimizedUrl;
         } else {
             throw new Error(data.error?.message || 'Upload failed');
         }
     } catch (error: any) {
-        console.error('[ImgBB] Upload failed:', error?.message || error);
+        console.error('[Cloudinary] Upload failed:', error?.message || error);
         throw error;
     }
-};
+};
+
 export const uploadImages = async (base64Images: string[], _folder?: string, _itemId?: string): Promise<string[]> => {
     const urls: string[] = [];
     for (const img of base64Images) {
@@ -61,11 +100,14 @@ export const uploadImages = async (base64Images: string[], _folder?: string, _it
         urls.push(url);
     }
     return urls;
-};
+};
+
 export const productsCollection = collection(db, 'products');
 export const ordersCollection = collection(db, 'orders');
-export const categoriesCollection = collection(db, 'categories');
-export const siteConfigDoc = doc(db, 'config', 'siteConfig');
+export const categoriesCollection = collection(db, 'categories');
+
+export const siteConfigDoc = doc(db, 'config', 'siteConfig');
+
 const removeUndefined = (obj: any): any => {
     const cleaned: any = {};
     for (const key in obj) {
@@ -74,9 +116,11 @@ const removeUndefined = (obj: any): any => {
         }
     }
     return cleaned;
-};
+};
+
 export const saveProduct = async (product: Product) => {
-    try {
+    try {
+
         const cleanProduct = removeUndefined(product);
 
         const docSize = JSON.stringify(cleanProduct).length;
@@ -90,7 +134,8 @@ export const saveProduct = async (product: Product) => {
         console.error('[Firebase] Error saving product:', error?.message || error);
         throw error;
     }
-};
+};
+
 export const deleteProduct = async (productId: string) => {
     try {
         await deleteDoc(doc(productsCollection, productId));
@@ -99,7 +144,8 @@ export const deleteProduct = async (productId: string) => {
         console.error('[Firebase] Error deleting product:', error);
         throw error;
     }
-};
+};
+
 export const saveOrder = async (order: Order) => {
     try {
         await setDoc(doc(ordersCollection, order.id), order);
@@ -108,7 +154,8 @@ export const saveOrder = async (order: Order) => {
         console.error('[Firebase] Error saving order:', error);
         throw error;
     }
-};
+};
+
 export const deleteOrder = async (orderId: string) => {
     try {
         await deleteDoc(doc(ordersCollection, orderId));
@@ -117,9 +164,11 @@ export const deleteOrder = async (orderId: string) => {
         console.error('[Firebase] Error deleting order:', error);
         throw error;
     }
-};
+};
+
 export const saveCategory = async (category: CategoryWithImage, id: string) => {
-    try {
+    try {
+
         const docSize = JSON.stringify(category).length;
         console.log('[Firebase] Saving category, doc size:', Math.round(docSize / 1024), 'KB');
         if (docSize > 900000) {
@@ -131,7 +180,8 @@ export const saveCategory = async (category: CategoryWithImage, id: string) => {
         console.error('[Firebase] Error saving category:', error?.message || error);
         throw error;
     }
-};
+};
+
 export const deleteCategory = async (id: string) => {
     try {
         await deleteDoc(doc(categoriesCollection, id));
@@ -140,7 +190,8 @@ export const deleteCategory = async (id: string) => {
         console.error('[Firebase] Error deleting category:', error);
         throw error;
     }
-};
+};
+
 export const saveSiteConfig = async (config: SiteConfig) => {
     try {
         await setDoc(siteConfigDoc, config);
@@ -149,20 +200,25 @@ export const saveSiteConfig = async (config: SiteConfig) => {
         console.error('[Firebase] Error saving site config:', error);
         throw error;
     }
-};
+};
+
 export const subscribeToProducts = (callback: (products: Product[]) => void) => {
     return onSnapshot(
         productsCollection,
         (snapshot) => {
-            const products = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
-            products.sort((a, b) => {
+            const products = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
+
+            products.sort((a, b) => {
+
                 const getTimestamp = (id: string) => {
                     const match = id.match(/prod_(\d+)/);
                     return match ? parseInt(match[1], 10) : 0;
                 };
                 const timeA = getTimestamp(a.id);
-                const timeB = getTimestamp(b.id);
-                if (timeA !== timeB) return timeB - timeA;
+                const timeB = getTimestamp(b.id);
+
+                if (timeA !== timeB) return timeB - timeA;
+
                 return b.id.localeCompare(a.id);
             });
             console.log('[Firebase] Products loaded:', products.length);
@@ -172,12 +228,14 @@ export const subscribeToProducts = (callback: (products: Product[]) => void) => 
             console.error('[Firebase] Error subscribing to products:', error);
         }
     );
-};
+};
+
 export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
     return onSnapshot(
         ordersCollection,
         (snapshot) => {
-            const orders = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order));
+            const orders = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order));
+
             orders.sort((a, b) => {
                 if (a.id < b.id) return 1;
                 if (a.id > b.id) return -1;
@@ -190,7 +248,8 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
             console.error('[Firebase] Error subscribing to orders:', error);
         }
     );
-};
+};
+
 export const subscribeToCategories = (callback: (categories: CategoryWithImage[]) => void) => {
     return onSnapshot(
         categoriesCollection,
@@ -203,7 +262,8 @@ export const subscribeToCategories = (callback: (categories: CategoryWithImage[]
             console.error('[Firebase] Error subscribing to categories:', error);
         }
     );
-};
+};
+
 export const subscribeToSiteConfig = (callback: (config: SiteConfig | null) => void) => {
     return onSnapshot(
         siteConfigDoc,
@@ -215,8 +275,48 @@ export const subscribeToSiteConfig = (callback: (config: SiteConfig | null) => v
             console.error('[Firebase] Error subscribing to site config:', error);
         }
     );
-};
-const productTypesDoc = doc(db, 'settings', 'productTypes');
+};
+
+// Stories
+export const storiesCollection = collection(db, 'stories');
+
+export const saveStory = async (story: import('./types').Story) => {
+    try {
+        await setDoc(doc(storiesCollection, story.id), story);
+        console.log('[Firebase] Story saved:', story.id);
+    } catch (error) {
+        console.error('[Firebase] Error saving story:', error);
+        throw error;
+    }
+};
+
+export const deleteStory = async (storyId: string) => {
+    try {
+        await deleteDoc(doc(storiesCollection, storyId));
+        console.log('[Firebase] Story deleted:', storyId);
+    } catch (error) {
+        console.error('[Firebase] Error deleting story:', error);
+        throw error;
+    }
+};
+
+export const subscribeToStories = (callback: (stories: import('./types').Story[]) => void) => {
+    return onSnapshot(
+        storiesCollection,
+        (snapshot) => {
+            const stories = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as import('./types').Story));
+            // Sort by newest first
+            stories.sort((a, b) => b.createdAt - a.createdAt);
+            console.log('[Firebase] Stories loaded:', stories.length);
+            callback(stories);
+        },
+        (error) => {
+            console.error('[Firebase] Error subscribing to stories:', error);
+        }
+    );
+};
+
+const productTypesDoc = doc(db, 'settings', 'productTypes');
 export const saveProductTypes = async (types: string[]) => {
     try {
         await setDoc(productTypesDoc, { types });
@@ -225,7 +325,8 @@ export const saveProductTypes = async (types: string[]) => {
         console.error('[Firebase] Error saving product types:', error);
         throw error;
     }
-};
+};
+
 export const subscribeToProductTypes = (callback: (types: string[]) => void) => {
     return onSnapshot(
         productTypesDoc,
@@ -237,23 +338,27 @@ export const subscribeToProductTypes = (callback: (types: string[]) => void) => 
             console.error('[Firebase] Error subscribing to product types:', error);
         }
     );
-};
+};
+
 const adminAuthDoc = doc(db, 'settings', 'adminAuth');
-const DEFAULT_ADMIN_PASSWORD = 'monks.001';
+const DEFAULT_ADMIN_PASSWORD = 'monks.001';
+
 export const getAdminPassword = async (): Promise<string> => {
     try {
         const { getDoc } = await import('firebase/firestore');
         const snapshot = await getDoc(adminAuthDoc);
         if (snapshot.exists() && snapshot.data()?.password) {
             return snapshot.data().password;
-        }
+        }
+
         await setDoc(adminAuthDoc, { password: DEFAULT_ADMIN_PASSWORD });
         return DEFAULT_ADMIN_PASSWORD;
     } catch (error) {
         console.error('[Firebase] Error getting admin password:', error);
         return DEFAULT_ADMIN_PASSWORD;
     }
-};
+};
+
 export const saveAdminPassword = async (newPassword: string): Promise<void> => {
     try {
         await setDoc(adminAuthDoc, { password: newPassword });
@@ -262,7 +367,8 @@ export const saveAdminPassword = async (newPassword: string): Promise<void> => {
         console.error('[Firebase] Error saving admin password:', error);
         throw error;
     }
-};
+};
+
 export const verifyAdminPassword = async (inputPassword: string): Promise<boolean> => {
     const storedPassword = await getAdminPassword();
     return inputPassword === storedPassword;

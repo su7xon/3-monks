@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../../store';
-import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig } from '../../types';
+import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story } from '../../types';
 import { useToast } from '../../components/Toast';
 
 const ConfirmDialog: React.FC<{
@@ -38,6 +38,7 @@ interface ProductModalProps {
   onClose: () => void;
   onSave: (product: Product) => Promise<void>;
   categories: CategoryWithImage[];
+  productTypes: string[];
 }
 
 const EMPTY_FORM: Partial<Product> = {
@@ -50,10 +51,11 @@ const EMPTY_FORM: Partial<Product> = {
   sizes: [],
   stock: 0,
   isNew: true,
-  isFeatured: false
+  isFeatured: false,
+  productType: ''
 };
 
-const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onClose, onSave, categories }) => {
+const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onClose, onSave, categories, productTypes }) => {
   const [formData, setFormData] = useState<Partial<Product>>(EMPTY_FORM);
   const [newColor, setNewColor] = useState('');
   const [newColorStock, setNewColorStock] = useState('');
@@ -105,6 +107,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
       isNew: formData.isNew || false,
       isFeatured: formData.isFeatured || false,
       isTrending: formData.isTrending || false,
+      productType: formData.productType || '',
       createdAt: isNew ? Date.now() : (product?.createdAt || Date.now()),
     };
 
@@ -179,7 +182,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center">
       <div className="bg-white w-full md:rounded-xl md:max-w-lg max-h-[90vh] overflow-y-auto">
-        {}
+        { }
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-bold text-gray-900">
             {isNew ? 'Add New Product' : 'Edit Product'}
@@ -192,7 +195,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-5">
-          {}
+          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Product Images</label>
             <div className="flex gap-2 flex-wrap mb-3">
@@ -206,19 +209,21 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <label className="flex items-center justify-center gap-2 w-full bg-gray-900 text-white px-4 py-3 text-sm font-semibold rounded-lg cursor-pointer active:scale-[0.98] transition-transform">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
               Upload Images
-              <input type="file" accept="image}
+              <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+            </label>
+          </div>
+          {/* Product Name */}
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Product Name *</label>
             <input type="text" value={formData.name || ''} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900" placeholder="Enter product name" required />
           </div>
 
-          {}
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Description</label>
             <textarea value={formData.description || ''} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} rows={3} placeholder="Material, fit, style..." className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 resize-none" />
           </div>
 
-          {}
+          { }
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Category</label>
@@ -230,9 +235,22 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Price (₹)</label>
               <input type="number" value={formData.price || ''} onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="0" />
             </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-gray-500 mb-2 block">Filter By (Optional)</label>
+              <select
+                value={formData.productType || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, productType: e.target.value }))}
+                className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 bg-white"
+              >
+                <option value="">Select Type</option>
+                {productTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {}
+          { }
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Stock</label>
@@ -244,7 +262,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          {}
+          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Colors & Stock</label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -277,7 +295,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <p className="text-[10px] text-gray-400 mt-2">Add colors here. Then set stock for each variant below.</p>
           </div>
 
-          {}
+          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Sizes</label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -303,7 +321,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          {}
+          { }
           {(formData.colors && formData.colors.length > 0 && formData.sizes && formData.sizes.length > 0) && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <label className="text-xs font-semibold text-gray-900 mb-3 block">Stock Matrix (Variant Management)</label>
@@ -343,14 +361,14 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           )}
 
-          {}
+          { }
           {(!formData.colors?.length || !formData.sizes?.length) && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-2 block">Total Stock</label>
                 <input type="number" value={formData.stock || ''} onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="0" />
               </div>
-              {}
+              { }
               {formData.colors && formData.colors.length > 0 && (
                 <div className="col-span-2">
                   <p className="text-[10px] text-orange-500">To enable advanced stock tracking, please add at least one size.</p>
@@ -359,7 +377,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           )}
 
-          {}
+          { }
           <div className="space-y-3">
             <label className="text-xs font-semibold text-gray-500 block">Product Tags</label>
             <div className="flex flex-wrap gap-4">
@@ -378,7 +396,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          {}
+          { }
           <div className="pt-4 border-t border-gray-100">
             <button type="submit" disabled={isSaving} className="w-full px-4 py-4 bg-green-600 text-white text-sm font-bold rounded-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSaving ? (
@@ -400,8 +418,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
@@ -422,6 +440,9 @@ const AdminDashboard: React.FC = () => {
     productTypes,
     setProductTypes,
     saveProductTypes,
+    stories,
+    addStory,
+    deleteStory,
   } = useShop();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config'>('products');
@@ -431,6 +452,9 @@ const AdminDashboard: React.FC = () => {
   const [configForm, setConfigForm] = useState<SiteConfig>(siteConfig);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: string; id: string; name: string }>({ isOpen: false, type: '', id: '', name: '' });
+
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState({ current: 0, total: 0 });
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
@@ -606,18 +630,49 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleUpdateCategoryImage = (index: number, newImage: string) => {
-    setCategories(prev => prev.map((cat, i) => i === index ? { ...cat, image: newImage } : cat));
-    showToast('Image updated', 'success');
+  const handleUpdateCategoryImage = async (index: number, newImage: string) => {
+    const updatedCategories = categories.map((cat, i) => i === index ? { ...cat, image: newImage } : cat);
+    setCategories(updatedCategories);
+
+    try {
+      const { saveCategory } = await import('../../firebase');
+      const cat = updatedCategories[index];
+      const id = cat.id || `cat_${index}`;
+      await saveCategory({ name: cat.name, image: newImage }, id);
+    } catch (error: any) {
+      console.error('Error saving category image:', error);
+      showToast('Error saving. Try "Save Changes" button.', 'error');
+    }
   };
 
-  const handleUpdateCategoryName = (index: number, newName: string) => {
-    setCategories(prev => prev.map((cat, i) => i === index ? { ...cat, name: newName } : cat));
+  const handleUpdateCategoryName = async (index: number, newName: string) => {
+    const updatedCategories = categories.map((cat, i) => i === index ? { ...cat, name: newName } : cat);
+    setCategories(updatedCategories);
+
+    try {
+      const { saveCategory } = await import('../../firebase');
+      const cat = updatedCategories[index];
+      const id = cat.id || `cat_${index}`;
+      await saveCategory({ name: newName, image: cat.image }, id);
+    } catch (error: any) {
+      console.error('Error saving category name:', error);
+    }
   };
 
-  const handleAddCategory = () => {
-    setCategories(prev => [...prev, { name: 'New Category', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800' }]);
-    showToast('Category added', 'success');
+  const handleAddCategory = async () => {
+    const newCat = { name: 'New Category', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800' };
+    const newCategories = [...categories, newCat];
+    setCategories(newCategories);
+
+    try {
+      const { saveCategory } = await import('../../firebase');
+      const id = `cat_${newCategories.length - 1}`;
+      await saveCategory(newCat, id);
+      showToast('Category added!', 'success');
+    } catch (error: any) {
+      console.error('Error saving new category:', error);
+      showToast('Category added locally. Click "Save Changes" to persist.', 'info');
+    }
   };
 
   const handleDeleteCategory = (index: number, name: string) => {
@@ -640,16 +695,12 @@ const AdminDashboard: React.FC = () => {
     showToast('Settings saved!', 'success');
   };
 
-  const stats = [
-    { label: 'Products', value: products.length, icon: '📦' },
-    { label: 'In Stock', value: products.filter(p => p.stock > 0).length, icon: '✓' },
-    { label: 'Categories', value: categories.length, icon: '🏷️' },
-    { label: 'Orders', value: orders.length, icon: '🛒' },
-  ];
+
 
   const tabs = [
     { id: 'products' as const, label: 'Products', icon: '📦' },
     { id: 'categories' as const, label: 'Categories', icon: '🏷️' },
+    { id: 'product-types' as const, label: 'Filters', icon: '⚡' },
     { id: 'orders' as const, label: 'Orders', icon: '📋' },
     { id: 'config' as const, label: 'Settings', icon: '⚙️' },
   ];
@@ -657,13 +708,13 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-4">
-        {}
+        { }
         <div className="py-6">
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your store</p>
         </div>
 
-        {}
+        { }
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {stats.map((stat, idx) => (
             <div key={idx} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -676,7 +727,7 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {}
+        { }
         <div className="hidden md:flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-100 mb-6">
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === tab.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
@@ -685,7 +736,7 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {}
+        { }
         {activeTab === 'products' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
@@ -727,7 +778,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {}
+        { }
         {activeTab === 'categories' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100">
@@ -744,7 +795,100 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex gap-2">
                       <label className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer">
                         📷 Change
-                        <input type="file" accept="image}
+                        <input type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => handleUpdateCategoryImage(index, reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }} className="hidden" />
+                      </label>
+                      <button onClick={() => handleDeleteCategory(index, cat.name)} className="bg-red-50 text-red-600 px-3 py-2 text-xs font-semibold rounded-lg">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button onClick={handleAddCategory} className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-lg">Add Category</button>
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button onClick={handleSaveCategories} className="w-full py-3 bg-green-600 text-white text-sm font-bold rounded-lg">Save Changes</button>
+            </div>
+          </div>
+        )}
+        {activeTab === 'product-types' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">Filters ({productTypes.length})</h2>
+              <p className="text-xs text-gray-500 mt-1">Manage types for filtering (e.g., Oversized T-Shirt, Karpets)</p>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add new product type"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val && !productTypes.includes(val)) {
+                        setProductTypes([...productTypes, val]);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                  className="flex-1 border border-gray-200 px-4 py-3 text-sm rounded-lg outline-none focus:border-gray-900"
+                />
+                <button
+                  onClick={(e) => {
+                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                    const val = input.value.trim();
+                    if (val && !productTypes.includes(val)) {
+                      setProductTypes([...productTypes, val]);
+                      input.value = '';
+                    }
+                  }}
+                  className="bg-gray-900 text-white px-6 py-3 text-sm font-bold rounded-lg"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {productTypes.map(type => (
+                  <div key={type} className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">{type}</span>
+                    <button
+                      onClick={() => setProductTypes(productTypes.filter(t => t !== type))}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <button
+                  onClick={async () => {
+                    try {
+                      await saveProductTypes();
+                      showToast('Product types saved!', 'success');
+                    } catch (err) {
+                      showToast('Failed to save types', 'error');
+                    }
+                  }}
+                  className="w-full bg-green-600 text-white px-6 py-3 text-sm font-bold rounded-lg"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'orders' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -811,7 +955,9 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {}
+        { }
+        { }
+
         {activeTab === 'config' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100">
@@ -820,7 +966,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="p-4 space-y-6">
-              {}
+              {/* Hero Section */}
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Hero Section</h3>
                 <div className="space-y-3">
@@ -838,8 +984,206 @@ const AdminDashboard: React.FC = () => {
                         Upload Image
                         <input
                           type="file"
-                          accept="image}
-              <div>
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setConfigForm(prev => ({ ...prev, heroBannerImage: reader.result as string }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {configForm.heroBannerImage && (
+                        <button
+                          onClick={() => setConfigForm(prev => ({ ...prev, heroBannerImage: '' }))}
+                          className="bg-red-50 text-red-600 border border-red-200 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-2">Overrides default video if set.</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Hero Video URL (Optional)</label>
+                    <input type="text" value={configForm.heroVideoUrl || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, heroVideoUrl: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="https://..." />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Subtitle</label>
+                    <input type="text" value={configForm.heroSubtitle} onChange={(e) => setConfigForm(prev => ({ ...prev, heroSubtitle: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">Main Button Text</label>
+                      <input type="text" value={configForm.heroButtonText} onChange={(e) => setConfigForm(prev => ({ ...prev, heroButtonText: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">Story Button Text</label>
+                      <input type="text" value={configForm.storyButtonText || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, storyButtonText: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="Our Story" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Story Button Link</label>
+                    <input type="text" value={configForm.storyButtonLink || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, storyButtonLink: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="/about" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Stories Management */}
+              <div className="border-t border-gray-100 pt-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Homepage Stories</h3>
+                <div className="space-y-6">
+                  {/* Add New Story */}
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const title = (form.elements.namedItem('title') as HTMLInputElement).value;
+                      const subtitle = (form.elements.namedItem('subtitle') as HTMLInputElement).value;
+                      const link = (form.elements.namedItem('link') as HTMLInputElement).value;
+                      const fileInput = form.elements.namedItem('image') as HTMLInputElement;
+                      const file = fileInput.files?.[0];
+
+                      if (!file) {
+                        showToast('Please upload an image', 'error');
+                        return;
+                      }
+
+                      try {
+                        showToast('Uploading story...', 'info');
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                          const base64 = reader.result as string;
+                          await addStory({
+                            id: Date.now().toString(),
+                            image: base64,
+                            title,
+                            subtitle,
+                            link,
+                            createdAt: Date.now(),
+                          });
+                          showToast('Story added!', 'success');
+                          form.reset();
+                        };
+                        reader.readAsDataURL(file);
+                      } catch (error) {
+                        console.error(error);
+                        showToast('Failed to add story', 'error');
+                      }
+                    }}
+                    className="bg-gray-50 p-4 rounded-xl space-y-4"
+                  >
+                    <h3 className="text-sm font-bold text-gray-900">Add New Story</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Image *</label>
+                        <input type="file" name="image" accept="image/*" required className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-900 file:text-white hover:file:bg-gray-700" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Link (Optional)</label>
+                        <input type="text" name="link" placeholder="/products/..." className="w-full border border-gray-200 px-3 py-2 text-sm rounded-lg outline-none focus:border-gray-900" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Title (Optional)</label>
+                        <input type="text" name="title" placeholder="Story Title" className="w-full border border-gray-200 px-3 py-2 text-sm rounded-lg outline-none focus:border-gray-900" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Subtitle (Optional)</label>
+                        <input type="text" name="subtitle" placeholder="Short description" className="w-full border border-gray-200 px-3 py-2 text-sm rounded-lg outline-none focus:border-gray-900" />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full bg-gray-900 text-white py-2.5 text-sm font-bold rounded-lg hover:bg-gray-800 transition-colors">
+                      Add Story
+                    </button>
+                  </form>
+
+                  {/* Stories List */}
+                  <div className="space-y-4">
+                    {stories.map(story => (
+                      <div key={story.id} className="flex gap-4 p-3 bg-white border border-gray-100 rounded-xl shadow-sm items-center">
+                        <img src={story.image} className="w-16 h-24 object-cover rounded-lg bg-gray-100 flex-shrink-0" alt="" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-900 text-sm truncate">{story.title || 'Untitled Story'}</h4>
+                          <p className="text-xs text-gray-500 truncate">{story.subtitle}</p>
+                          {story.link && <p className="text-[10px] text-blue-600 truncate mt-1">{story.link}</p>}
+                          <p className="text-[10px] text-gray-400 mt-1">{new Date(story.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this story?')) {
+                              deleteStory(story.id);
+                              showToast('Story deleted', 'success');
+                            }
+                          }}
+                          className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    {stories.length === 0 && (
+                      <div className="text-center text-gray-400 py-8 text-sm">No stories yet</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* About / Story Page Settings */}
+              <div className="border-t border-gray-100 pt-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">About / Story Page</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Hero Image</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-16 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        {configForm.aboutImage ? (
+                          <img src={configForm.aboutImage} alt="About" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Image</div>
+                        )}
+                      </div>
+                      <label className="cursor-pointer bg-white border border-gray-200 text-gray-700 px-4 py-2 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors">
+                        Upload Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setConfigForm(prev => ({ ...prev, aboutImage: reader.result as string }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Page Title</label>
+                    <input type="text" value={configForm.aboutTitle || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, aboutTitle: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="MANIFESTO" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Story Text</label>
+                    <textarea value={configForm.aboutText || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, aboutText: e.target.value }))} rows={6} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 resize-none whitespace-pre-wrap" placeholder="The Three Pillars..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="border-t border-gray-100 pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Contact Information</h3>
                 <div className="space-y-3">
                   <div>
@@ -857,7 +1201,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {}
+              {/* Password Change */}
               <div className="border-t pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Change Admin Password</h3>
                 <div className="space-y-3">
@@ -912,7 +1256,7 @@ const AdminDashboard: React.FC = () => {
         )}
       </div>
 
-      {}
+      { }
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
         <div className="flex justify-around">
           {tabs.map(tab => (
@@ -924,7 +1268,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {}
+      { }
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
         title={`Delete ${deleteConfirm.type}?`}
@@ -933,7 +1277,7 @@ const AdminDashboard: React.FC = () => {
         onCancel={() => setDeleteConfirm({ isOpen: false, type: '', id: '', name: '' })}
       />
 
-      {}
+      { }
       <ProductModal
         product={editingProduct}
         isOpen={isProductModalOpen}
@@ -941,8 +1285,9 @@ const AdminDashboard: React.FC = () => {
         onClose={() => { setIsProductModalOpen(false); setEditingProduct(null); }}
         onSave={handleSaveProduct}
         categories={categories}
+        productTypes={productTypes}
       />
-    </div>
+    </div >
   );
 };
 

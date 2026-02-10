@@ -1,6 +1,7 @@
 
 import React from 'react';
 import Hero from '../components/Hero';
+import Stories from '../components/Stories';
 import { Link } from 'react-router-dom';
 import { useShop } from '../store';
 
@@ -11,18 +12,19 @@ const Home: React.FC = () => {
   return (
     <div className="bg-white">
       <Hero />
+      <Stories />
 
-      {}
+      { }
       <section className="py-12 md:py-16 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
-          {}
+          { }
           <div className="flex justify-center items-center mb-8 md:mb-12 max-w-4xl mx-auto px-2">
             <h2 className="text-base md:text-lg font-black uppercase text-gray-900 tracking-wide text-center">
               THE COLLECTION
             </h2>
           </div>
 
-          {}
+          { }
           <div className="grid grid-cols-3 gap-3 md:gap-8 max-w-4xl mx-auto">
             {isLoading || categories.length === 0 ? (
 
@@ -47,9 +49,10 @@ const Home: React.FC = () => {
                       src={cat.image}
                       alt={`${cat.name} Category`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="eager"
                     />
                   </div>
-                  {}
+                  { }
                   <h3 className="text-sm md:text-base font-bold uppercase text-gray-900 tracking-wide text-center mt-3">
                     {cat.name}
                   </h3>
@@ -66,9 +69,9 @@ const Home: React.FC = () => {
         </div>
       </section >
 
-      {}
+      { }
       < section className="relative py-8 md:py-32 flex items-center overflow-hidden" >
-        {}
+        { }
         < div className="absolute inset-0 z-0 bg-gradient-to-b from-gray-900 via-black to-black" ></div >
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 w-full text-center animate-fade-in">
@@ -110,7 +113,7 @@ const Home: React.FC = () => {
         </div>
       </section >
 
-      {}
+      { }
       {
         products.filter(p => p.isTrending).length > 0 && (
           <section className="py-12 md:py-16 px-4 bg-gray-50">

@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useShop } from '../store';
 import { Product } from '../types';
 import { useToast } from '../components/Toast';
+import ImageViewer from '../components/ImageViewer';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams();
@@ -14,6 +15,29 @@ const ProductDetail: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [activeImage, setActiveImage] = useState(0);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!product) return;
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50;
+    
+    if (diff > threshold && activeImage < product.images.length - 1) {
+      setActiveImage(activeImage + 1);
+    } else if (diff < -threshold && activeImage > 0) {
+      setActiveImage(activeImage - 1);
+    }
+  };
 
   useEffect(() => {
     const p = products.find(p => p.id === id);
@@ -61,14 +85,36 @@ const ProductDetail: React.FC = () => {
     <div className="pt-20 md:pt-24 pb-10 md:pb-16 bg-white min-h-screen text-gray-900">
       <div className="max-w-6xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 animate-fade-in">
-          {}
+          { }
           <div className="space-y-3 md:space-y-4">
-            <div className="aspect-square md:aspect-square lg:aspect-[4/5] max-h-[500px] bg-gray-100 overflow-hidden">
+            <div
+              className="aspect-square md:aspect-square lg:aspect-[4/5] max-h-[500px] bg-gray-100 overflow-hidden cursor-zoom-in group relative"
+              onClick={() => setIsViewerOpen(true)}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <img
                 src={product.images[activeImage]}
                 alt={product.name}
-                className="w-full h-full object-cover transition-all duration-500"
+                className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                loading="eager"
               />
+              <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                </svg>
+              </div>
+              {product.images.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 md:hidden">
+                  {product.images.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={`w-2 h-2 rounded-full transition-all ${activeImage === idx ? 'bg-gray-900 w-4' : 'bg-gray-400'}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-4 gap-2 md:gap-3">
               {product.images.map((img, idx) => (
@@ -83,7 +129,7 @@ const ProductDetail: React.FC = () => {
             </div>
           </div>
 
-          {}
+          { }
           <div className="flex flex-col">
             <div className="mb-6 md:mb-8">
               <p className="text-xs uppercase tracking-widest text-gray-500 mb-2 font-medium">Drop 001 / Archive Collection</p>
@@ -103,9 +149,9 @@ const ProductDetail: React.FC = () => {
               </p>
             </div>
 
-            {}
+            { }
             <div className="space-y-6 md:space-y-12">
-              {}
+              { }
               <div>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2 md:mb-4 block">Select Finish</span>
                 <div className="flex flex-wrap gap-2 md:gap-4">
@@ -121,7 +167,7 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
 
-              {}
+              { }
               <div>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2 md:mb-4 block">Select Size</span>
                 <div className="flex flex-wrap gap-2 md:gap-4">
@@ -137,7 +183,7 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
 
-              {}
+              { }
               <div className="hidden md:block pt-10 border-t border-gray-200">
                 <div className="flex justify-between items-center text-xs uppercase tracking-widest mb-4">
                   <span className="text-gray-400">Stock Status</span>
@@ -165,7 +211,7 @@ const ProductDetail: React.FC = () => {
                   })()}
                 </div>
 
-                {}
+                { }
                 <div className="hidden md:block space-y-6">
 
                   {(() => {
@@ -216,9 +262,9 @@ const ProductDetail: React.FC = () => {
         </div>
       </div>
 
-      {}
+      { }
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-8 md:hidden z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-        {}
+        { }
         <div className="flex justify-end mb-2">
           {(() => {
             let currentStock = product.stock;
@@ -277,8 +323,15 @@ const ProductDetail: React.FC = () => {
         </div>
       </div>
 
-      {}
+      { }
       <div className="h-32 md:hidden"></div>
+
+      <ImageViewer
+        images={product.images}
+        initialIndex={activeImage}
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+      />
     </div>
   );
 };
