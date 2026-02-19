@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story } from './types';
+import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story, Review } from './types';
 import {
   saveProduct,
   deleteProduct,
@@ -38,7 +38,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   heroButtonText: 'SHOP COLLECTION',
   heroBannerImage: '',
   contactPhone: '+91 9045848613',
-  contactEmail: 'info@the3monks.com',
+  contactEmail: 'info@the3monks.in',
   contactAddress: 'Haldwani, Uttarakhand, India',
   heroVideoUrl: 'https://player.vimeo.com/external/370331493.sd.mp4?s=27d04e137b2d58546b9a89c922a6132717a66e4a&profile_id=164&oauth2_token_id=57447761',
   storyButtonText: 'Our Story',
@@ -71,6 +71,13 @@ interface ShopContextType {
   addStory: (story: Story) => Promise<void>;
   deleteStory: (storyId: string) => Promise<void>;
   isLoading: boolean;
+  reduceStock: (order: Order) => Promise<void>;
+  addReview: (review: Omit<Review, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+  getProductReviews: (productId: string) => Promise<Review[]>;
+  getAllReviews: () => Promise<Review[]>;
+  getApprovedReviews: () => Promise<Review[]>;
+  updateReviewStatus: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>;
+  deleteReview: (reviewId: string) => Promise<void>;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -78,7 +85,7 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProductsState] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [categories, setCategoriesState] = useState<CategoryWithId[]>([]); // Start empty to avoid flash
+  const [categories, setCategoriesState] = useState<CategoryWithId[]>([]);
   const [siteConfig, setSiteConfigState] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [productTypes, setProductTypesState] = useState<string[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
@@ -225,11 +232,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [productTypes]);
 
-  // Story operations
   const addStory = useCallback(async (story: Story) => {
     console.log('[Store] Adding story:', story.id);
     try {
-      // Upload image
       const imageUrl = await uploadImage(story.image, `stories/${story.id}/image_${Date.now()}.jpg`);
       await saveStory({ ...story, image: imageUrl });
       console.log('[Store] Story saved successfully!');
@@ -260,7 +265,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const addToCart = (item: CartItem) => {
+  const addToCart = useCallback((item: CartItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor);
       if (existing) {
@@ -268,18 +273,23 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [...prev, item];
     });
-  };
+  }, []);
 
-  const removeFromCart = (id: string, size: string, color: string) => {
+  const removeFromCart = useCallback((id: string, size: string, color: string) => {
     setCart(prev => prev.filter(item => !(item.id === id && item.selectedSize === size && item.selectedColor === color)));
-  };
+  }, []);
 
-  const updateQuantity = (id: string, size: string, color: string, quantity: number) => {
-    if (quantity <= 0) return removeFromCart(id, size, color);
+  const updateQuantity = useCallback((id: string, size: string, color: string, quantity: number) => {
+    if (quantity <= 0) {
+      setCart(prev => prev.filter(item => !(item.id === id && item.selectedSize === size && item.selectedColor === color)));
+      return;
+    }
     setCart(prev => prev.map(item => (item.id === id && item.selectedSize === size && item.selectedColor === color) ? { ...item, quantity } : item));
-  };
+  }, []);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => {
+    setCart([]);
+  }, []);
 
   const addOrder = async (order: Order) => {
     console.log('[Store] Adding order:', order.id);
@@ -309,6 +319,78 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const reduceStock = useCallback(async (order: Order) => {
+    console.log('[Store] Reducing stock for order:', order.id);
+    try {
+      const { reduceStockForOrder } = await import('./firebase');
+      await reduceStockForOrder(order);
+      console.log('[Store] Stock reduced successfully for order:', order.id);
+    } catch (error) {
+      console.error('[Store] Error reducing stock:', error);
+      throw error;
+    }
+  }, []);
+
+  const addReview = useCallback(async (review: Omit<Review, 'id' | 'status' | 'createdAt'>) => {
+    try {
+      const { addReview } = await import('./firebase');
+      await addReview(review);
+    } catch (error) {
+      console.error('[Store] Error adding review:', error);
+      throw error;
+    }
+  }, []);
+
+  const getProductReviews = useCallback(async (productId: string) => {
+    try {
+      const { getProductReviews } = await import('./firebase');
+      return await getProductReviews(productId);
+    } catch (error) {
+      console.error('[Store] Error fetching product reviews:', error);
+      return [];
+    }
+  }, []);
+
+  const getAllReviews = useCallback(async () => {
+    try {
+      const { getAllReviews } = await import('./firebase');
+      return await getAllReviews();
+    } catch (error) {
+      console.error('[Store] Error fetching all reviews:', error);
+      return [];
+    }
+  }, []);
+
+  const getApprovedReviews = useCallback(async () => {
+    try {
+      const { getApprovedReviews } = await import('./firebase');
+      return await getApprovedReviews();
+    } catch (error) {
+      console.error('[Store] Error fetching approved reviews:', error);
+      return [];
+    }
+  }, []);
+
+  const updateReviewStatus = useCallback(async (reviewId: string, status: 'approved' | 'rejected') => {
+    try {
+      const { updateReviewStatus } = await import('./firebase');
+      await updateReviewStatus(reviewId, status);
+    } catch (error) {
+      console.error('[Store] Error updating review status:', error);
+      throw error;
+    }
+  }, []);
+
+  const deleteReview = useCallback(async (reviewId: string) => {
+    try {
+      const { deleteReview } = await import('./firebase');
+      await deleteReview(reviewId);
+    } catch (error) {
+      console.error('[Store] Error deleting review:', error);
+      throw error;
+    }
+  }, []);
+
   return (
     <ShopContext.Provider value={{
       products,
@@ -335,7 +417,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addStory,
       deleteStory: deleteStoryFromStore,
       isLoading,
-      deleteOrder
+      deleteOrder,
+      reduceStock,
+      addReview,
+      getProductReviews,
+      getAllReviews,
+      getApprovedReviews,
+      updateReviewStatus,
+      deleteReview
     }}>
       {children}
     </ShopContext.Provider>

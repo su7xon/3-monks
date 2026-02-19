@@ -5,7 +5,6 @@ const Contact: React.FC = () => {
     <div className="pt-20 md:pt-32 pb-10 md:pb-20 bg-white min-h-screen text-gray-900">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16">
-          {}
           <div>
             <span className="text-[10px] uppercase tracking-[0.5em] text-gray-400 mb-2 md:mb-4 block italic font-light">Connections</span>
             <h1 className="text-3xl md:text-8xl font-oswald font-bold uppercase tracking-tighter mb-6 md:mb-12 text-gray-900">Reach Out</h1>
@@ -24,7 +23,7 @@ const Contact: React.FC = () => {
                 <div>
                   <h3 className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-gray-400 mb-2 md:mb-4">Contact</h3>
                   <p className="text-xs md:text-sm font-light leading-relaxed text-gray-500">
-                    info@the3monks.com<br />
+                    info@the3monks.in<br />
                     +91 9045848613<br />
                     Daily: 10AM - 9PM
                   </p>
@@ -32,10 +31,8 @@ const Contact: React.FC = () => {
               </div>
             </div>
 
-            {}
             <div className="flex flex-col gap-3 max-w-md font-sans">
 
-              {}
               <a href="https://wa.me/919045848613" target="_blank" rel="noopener noreferrer" className="relative w-full bg-[#25D366] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -56,7 +53,6 @@ const Contact: React.FC = () => {
                 </div>
               </a>
 
-              {}
               <a href="tel:+919045848613" className="relative w-full bg-[#111827] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -77,8 +73,7 @@ const Contact: React.FC = () => {
                 </div>
               </a>
 
-              {}
-              <a href="mailto:info@the3monks.com" className="relative w-full bg-[#EF4444] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
+              <a href="mailto:info@the3monks.in" className="relative w-full bg-[#EF4444] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-full backdrop-blur-sm">
@@ -93,13 +88,12 @@ const Contact: React.FC = () => {
                     </div>
                   </div>
                   <div className="pt-2 border-t border-white/20 flex justify-between items-center">
-                    <p className="text-sm font-bold tracking-tight truncate max-w-[150px]">info@the3monks.com</p>
+                    <p className="text-sm font-bold tracking-tight truncate max-w-[150px]">info@the3monks.in</p>
                     <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 group-hover:translate-x-1 transition-transform flex items-center gap-1">Email →</p>
                   </div>
                 </div>
               </a>
 
-              {}
               <a href="https://www.instagram.com/the_3monks_clo?igsh=aWticW9nY3E4djdr" target="_blank" rel="noopener noreferrer" className="relative w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -123,7 +117,6 @@ const Contact: React.FC = () => {
             </div>
           </div>
 
-          {}
           <div className="h-[250px] md:h-[400px] lg:h-auto min-h-[200px] md:min-h-[350px] border border-gray-200 overflow-hidden relative group rounded-xl shadow-sm">
             <iframe
               src="https://maps.google.com/maps?q=The+III+Monks+-+Clothing+Store+in+Haldwani&t=&z=15&ie=UTF8&iwloc=&output=embed"

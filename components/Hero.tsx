@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../store';
@@ -7,8 +6,7 @@ const Hero: React.FC = () => {
   const { siteConfig } = useShop();
 
   return (
-    <section className="relative h-[72vh] md:h-[85vh] w-full flex items-center justify-center overflow-x-clip overflow-y-visible bg-black px-4">
-      { }
+    <section className="relative h-[80dvh] md:h-screen w-full flex items-center justify-center overflow-hidden bg-black px-4">
       <div className="absolute inset-0 z-0">
         {siteConfig.heroBannerImage ? (
           <img
@@ -30,25 +28,31 @@ const Hero: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black"></div>
       </div>
 
-      { }
-      <div className="relative z-10 text-center px-8 md:px-16 md:-mt-52">
-        <div className="flex flex-col items-center animate-fade-in">
+      <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center justify-center text-center">
+
+        <div className="flex flex-col items-center gap-2 md:gap-4 animate-fade-in">
           <img
             src="/hero-logo.png"
             alt="The 3"
-            className="w-28 md:w-36 mb-1 md:mb-1 object-contain opacity-90 mt-8 md:mt-36"
+            className="w-32 md:w-56 object-contain opacity-90 drop-shadow-2xl"
           />
 
-          <p className="mt-8 md:mt-4 text-sm md:text-lg uppercase tracking-[0.5em] font-light text-neutral-300">
+          <p className="text-sm md:text-xl uppercase tracking-[0.4em] font-light text-neutral-200 drop-shadow-md px-2">
             {siteConfig.heroSubtitle || 'Evolution of the Street Soul'}
           </p>
         </div>
 
-        <div className="mt-8 md:mt-10 flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6 animate-fade-in w-full px-5" style={{ animationDelay: '0.3s' }}>
-          <Link to="/shop" className="bg-white text-black py-4 md:px-14 md:py-5 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all w-full md:w-auto text-center">
+        <div className="flex flex-col md:flex-row w-full max-w-xs md:max-w-none gap-4 mt-8 md:mt-10 justify-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Link
+            to="/shop"
+            className="w-full md:w-auto bg-white text-black py-4 px-10 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all text-center whitespace-nowrap shadow-lg"
+          >
             {siteConfig.heroButtonText || 'Shop Collection'}
           </Link>
-          <Link to={siteConfig.storyButtonLink || '/about'} className="border border-white/30 text-white py-4 md:px-14 md:py-5 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white/10 transition-all w-full md:w-auto text-center">
+          <Link
+            to={siteConfig.storyButtonLink || '/about'}
+            className="w-full md:w-auto border border-white/40 text-white py-4 px-10 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white/10 transition-all text-center whitespace-nowrap shadow-lg"
+          >
             {siteConfig.storyButtonText || 'Our Story'}
           </Link>
         </div>

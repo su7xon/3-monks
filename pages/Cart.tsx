@@ -25,7 +25,6 @@ const Cart: React.FC = () => {
         <h1 className="text-3xl md:text-7xl font-oswald font-bold uppercase tracking-tighter mb-6 md:mb-20">Cart</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-16">
-          {}
           <div className="lg:col-span-8 space-y-6 md:space-y-12">
             {cart.map((item) => (
               <div key={`${item.id}-${item.selectedSize}-${item.selectedColor}`} className="flex gap-3 md:gap-8 group">
@@ -67,7 +66,6 @@ const Cart: React.FC = () => {
             ))}
           </div>
 
-          {}
           <div className="lg:col-span-4">
             <div className="bg-gray-50 p-4 md:p-8 sticky top-32 border border-gray-200">
               <h3 className="text-xl md:text-2xl font-oswald font-bold uppercase mb-4 md:mb-8 text-gray-900">Order Summary</h3>
@@ -98,7 +96,7 @@ const Cart: React.FC = () => {
         </div>
       </div>
 
-      {}
+
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:hidden z-40 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
@@ -111,7 +109,6 @@ const Cart: React.FC = () => {
         </div>
       </div>
 
-      {}
       <div className="h-20 md:hidden"></div>
     </div>
   );

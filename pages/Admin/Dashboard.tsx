@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../../store';
-import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story } from '../../types';
+import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story, Review } from '../../types';
 import { useToast } from '../../components/Toast';
 
 const ConfirmDialog: React.FC<{
@@ -26,6 +26,7 @@ const ConfirmDialog: React.FC<{
             Delete
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -43,6 +44,7 @@ interface ProductModalProps {
 
 const EMPTY_FORM: Partial<Product> = {
   name: '',
+  subtitle: '',
   description: '',
   price: 0,
   category: 'Men',
@@ -66,8 +68,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   useEffect(() => {
     if (isOpen) {
       if (isNew) {
-
-        setFormData({ ...EMPTY_FORM, colorStock: {} }); // Initialize colorStock
+        setFormData({ ...EMPTY_FORM, colorStock: {} });
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
@@ -95,6 +96,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     const newProduct: Product = {
       id: isNew ? `prod_${Date.now()}` : (product?.id || ''),
       name: formData.name || '',
+      subtitle: formData.subtitle || '',
       description: formData.description || '',
       price: formData.price || 0,
       category: formData.category || 'Men',
@@ -182,7 +184,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center">
       <div className="bg-white w-full md:rounded-xl md:max-w-lg max-h-[90vh] overflow-y-auto">
-        { }
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-bold text-gray-900">
             {isNew ? 'Add New Product' : 'Edit Product'}
@@ -195,7 +196,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-5">
-          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Product Images</label>
             <div className="flex gap-2 flex-wrap mb-3">
@@ -212,10 +212,14 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
               <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
             </label>
           </div>
-          {/* Product Name */}
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Product Name *</label>
             <input type="text" value={formData.name || ''} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900" placeholder="Enter product name" required />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block">Subtitle (Collection Name)</label>
+            <input type="text" value={formData.subtitle || ''} onChange={(e) => setFormData(prev => ({ ...prev, subtitle: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="e.g. Drop 001 / Archive Collection" />
           </div>
 
           <div>
@@ -223,7 +227,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <textarea value={formData.description || ''} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} rows={3} placeholder="Material, fit, style..." className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900 resize-none" />
           </div>
 
-          { }
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Category</label>
@@ -250,7 +253,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          { }
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Stock</label>
@@ -262,7 +264,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Colors & Stock</label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -295,7 +296,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <p className="text-[10px] text-gray-400 mt-2">Add colors here. Then set stock for each variant below.</p>
           </div>
 
-          { }
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Sizes</label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -321,17 +321,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          { }
-          {(formData.colors && formData.colors.length > 0 && formData.sizes && formData.sizes.length > 0) && (
+          {(formData.sizes && formData.sizes.length > 0) && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <label className="text-xs font-semibold text-gray-900 mb-3 block">Stock Matrix (Variant Management)</label>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {formData.colors.map(color => (
+                {(formData.colors && formData.colors.length > 0 ? formData.colors : ['Standard']).map(color => (
                   formData.sizes?.map(size => {
                     const variantKey = `${color}_${size}`;
                     return (
                       <div key={variantKey} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-100">
-                        <span className="font-medium text-gray-700">{color} - {size}</span>
+                        <span className="font-medium text-gray-700">{color === 'Standard' ? size : `${color} - ${size}`}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-400">Qty:</span>
                           <input
@@ -361,23 +360,15 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           )}
 
-          { }
-          {(!formData.colors?.length || !formData.sizes?.length) && (
+          {(!formData.sizes?.length) && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-2 block">Total Stock</label>
                 <input type="number" value={formData.stock || ''} onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="0" />
               </div>
-              { }
-              {formData.colors && formData.colors.length > 0 && (
-                <div className="col-span-2">
-                  <p className="text-[10px] text-orange-500">To enable advanced stock tracking, please add at least one size.</p>
-                </div>
-              )}
             </div>
           )}
 
-          { }
           <div className="space-y-3">
             <label className="text-xs font-semibold text-gray-500 block">Product Tags</label>
             <div className="flex flex-wrap gap-4">
@@ -396,7 +387,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
-          { }
           <div className="pt-4 border-t border-gray-100">
             <button type="submit" disabled={isSaving} className="w-full px-4 py-4 bg-green-600 text-white text-sm font-bold rounded-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSaving ? (
@@ -443,9 +433,14 @@ const AdminDashboard: React.FC = () => {
     stories,
     addStory,
     deleteStory,
+    reduceStock,
+    getAllReviews,
+    updateReviewStatus,
+    deleteReview
   } = useShop();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews'>('products');
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -453,8 +448,6 @@ const AdminDashboard: React.FC = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: string; id: string; name: string }>({ isOpen: false, type: '', id: '', name: '' });
 
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationProgress, setMigrationProgress] = useState({ current: 0, total: 0 });
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
@@ -697,24 +690,30 @@ const AdminDashboard: React.FC = () => {
 
 
 
+  const stats = [
+    { label: 'Products', value: products.length, icon: '📦' },
+    { label: 'In Stock', value: products.filter(p => p.stock > 0).length, icon: '✓' },
+    { label: 'Categories', value: categories.length, icon: '🏷️' },
+    { label: 'Orders', value: orders.length, icon: '🛒' },
+  ];
+
   const tabs = [
     { id: 'products' as const, label: 'Products', icon: '📦' },
     { id: 'categories' as const, label: 'Categories', icon: '🏷️' },
     { id: 'product-types' as const, label: 'Filters', icon: '⚡' },
     { id: 'orders' as const, label: 'Orders', icon: '📋' },
+    { id: 'reviews' as const, label: 'Reviews', icon: '⭐' },
     { id: 'config' as const, label: 'Settings', icon: '⚙️' },
   ];
 
   return (
     <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto px-4">
-        { }
         <div className="py-6">
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your store</p>
         </div>
 
-        { }
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {stats.map((stat, idx) => (
             <div key={idx} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -727,7 +726,6 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        { }
         <div className="hidden md:flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-100 mb-6">
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === tab.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
@@ -736,7 +734,6 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        { }
         {activeTab === 'products' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
@@ -778,7 +775,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        { }
         {activeTab === 'categories' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100">
@@ -909,7 +905,31 @@ const AdminDashboard: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-gray-900">₹{order.total}</p>
-                          <select value={order.status} onChange={(e) => { updateOrderStatus(order.id, e.target.value as OrderStatus); showToast('Order status updated', 'success'); }} className="mt-1 text-xs bg-gray-100 border-0 rounded-lg px-2 py-1 font-semibold outline-none">
+                          <select
+                            value={order.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value as OrderStatus;
+                              if (newStatus === OrderStatus.SHIPPED && order.status !== OrderStatus.SHIPPED) {
+                                const confirmShipped = window.confirm(
+                                  "Marking as Shipped will reduce stock for these items. Continue?"
+                                );
+                                if (!confirmShipped) return;
+
+                                try {
+                                  await reduceStock(order);
+                                  showToast('Stock reduced & Order marked Shipped', 'success');
+                                } catch (error) {
+                                  showToast('Failed to reduce stock. Order status NOT updated.', 'error');
+                                  return; // Stop update if stock reduction fails
+                                }
+                              }
+                              updateOrderStatus(order.id, newStatus);
+                              if (newStatus !== OrderStatus.SHIPPED) {
+                                showToast('Order status updated', 'success');
+                              }
+                            }}
+                            className="mt-1 text-xs bg-gray-100 border-0 rounded-lg px-2 py-1 font-semibold outline-none"
+                          >
                             {Object.values(OrderStatus).map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                           <button
@@ -927,6 +947,11 @@ const AdminDashboard: React.FC = () => {
                           <p className="text-sm font-medium text-gray-900">{order.customer.name}</p>
                           <p className="text-xs text-gray-600">{order.customer.email}</p>
                           <p className="text-xs text-gray-600">{order.customer.phone}</p>
+                          {order.customer.instagramId && (
+                            <p className="text-xs text-purple-600 font-medium mt-1">
+                              IG: {order.customer.instagramId}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-gray-500 mb-2">Shipping Address</p>
@@ -955,8 +980,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        { }
-        { }
 
         {activeTab === 'config' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -966,7 +989,6 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="p-4 space-y-6">
-              {/* Hero Section */}
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Hero Section</h3>
                 <div className="space-y-3">
@@ -1007,7 +1029,6 @@ const AdminDashboard: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-2">Overrides default video if set.</p>
                   </div>
 
                   <div>
@@ -1036,11 +1057,9 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Stories Management */}
               <div className="border-t border-gray-100 pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Homepage Stories</h3>
                 <div className="space-y-6">
-                  {/* Add New Story */}
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -1104,7 +1123,6 @@ const AdminDashboard: React.FC = () => {
                     </button>
                   </form>
 
-                  {/* Stories List */}
                   <div className="space-y-4">
                     {stories.map(story => (
                       <div key={story.id} className="flex gap-4 p-3 bg-white border border-gray-100 rounded-xl shadow-sm items-center">
@@ -1137,7 +1155,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* About / Story Page Settings */}
               <div className="border-t border-gray-100 pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">About / Story Page</h3>
                 <div className="space-y-4">
@@ -1182,7 +1199,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Contact Information */}
               <div className="border-t border-gray-100 pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Contact Information</h3>
                 <div className="space-y-3">
@@ -1201,7 +1217,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Password Change */}
               <div className="border-t pt-6">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Change Admin Password</h3>
                 <div className="space-y-3">
@@ -1254,9 +1269,94 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'reviews' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold">Reviews Management</h2>
+              <button
+                onClick={() => getAllReviews().then(setReviews)}
+                className="text-sm text-gray-500 hover:text-black underline"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {reviews.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">
+                No reviews found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                    <tr>
+                      <th className="px-6 py-4">Product</th>
+                      <th className="px-6 py-4">User</th>
+                      <th className="px-6 py-4">Rating</th>
+                      <th className="px-6 py-4">Comment</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {reviews.map((review) => (
+                      <tr key={review.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img src={review.productImage} alt="" className="w-10 h-10 rounded object-cover" />
+                            <span className="font-medium truncate max-w-[150px]">{review.productName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">{review.userName}</td>
+                        <td className="px-6 py-4 text-yellow-500">
+                          {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                        </td>
+                        <td className="px-6 py-4 max-w-xs truncate" title={review.comment}>{review.comment}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${review.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            review.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {review.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right space-x-2">
+                          {review.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                await updateReviewStatus(review.id, 'approved');
+                                showToast('Review approved', 'success');
+                                getAllReviews().then(setReviews);
+                              }}
+                              className="text-green-600 hover:text-green-800 font-medium"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to delete this review?')) {
+                                await deleteReview(review.id);
+                                showToast('Review deleted', 'success');
+                                getAllReviews().then(setReviews);
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      { }
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
         <div className="flex justify-around">
           {tabs.map(tab => (
@@ -1268,16 +1368,14 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      { }
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
-        title={`Delete ${deleteConfirm.type}?`}
+        title={`Delete ${deleteConfirm.type.charAt(0).toUpperCase() + deleteConfirm.type.slice(1)}`}
         message={`Are you sure you want to delete "${deleteConfirm.name}"? This action cannot be undone.`}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirm({ isOpen: false, type: '', id: '', name: '' })}
       />
 
-      { }
       <ProductModal
         product={editingProduct}
         isOpen={isProductModalOpen}

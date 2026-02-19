@@ -37,13 +37,16 @@ const Shop: React.FC = () => {
   };
 
   const filteredProducts = useMemo(() => {
-    let result = activeCategory === 'All'
-      ? products
-      : products.filter(p => p.category === activeCategory);
+    let result = products;
 
-    // Apply Type Filter
+    // Apply Type Filter (Global Override)
     if (selectedTypes.length > 0) {
-      result = result.filter(p => p.productType && selectedTypes.includes(p.productType));
+      result = products.filter(p => p.productType && selectedTypes.includes(p.productType));
+    } else {
+      // Apply Category Filter
+      if (activeCategory !== 'All') {
+        result = products.filter(p => p.category === activeCategory);
+      }
     }
 
     // Apply Sort
@@ -73,13 +76,9 @@ const Shop: React.FC = () => {
   return (
     <div className="pt-24 md:pt-32 pb-20 bg-white min-h-screen">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-center items-center mb-10 md:mb-20 gap-8">
-
-          {/* AI Stylist */}
           <AIStylist />
 
-          {/* Desktop Category Nav */}
           <nav className="flex flex-wrap justify-center gap-6 animate-fade-in">
             {categoryNames.map(cat => (
               <button
@@ -93,7 +92,57 @@ const Shop: React.FC = () => {
           </nav>
         </div>
 
-        {/* Product Grid */}
+        <div className="hidden md:flex justify-between items-start mb-10 pb-6 border-b border-gray-100">
+          <div className="w-2/3">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Filter:</span>
+              {productTypes.length > 0 ? (
+                productTypes.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => toggleType(type)}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all ${selectedTypes.includes(type)
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-900'
+                      }`}
+                  >
+                    {type}
+                  </button>
+                ))
+              ) : (
+                <span className="text-xs text-gray-300 italic">No filters available</span>
+              )}
+
+              {selectedTypes.length > 0 && (
+                <button
+                  onClick={() => setSelectedTypes([])}
+                  className="text-xs text-red-500 underline hover:text-red-700 uppercase tracking-wider font-medium ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="border-none text-xs font-bold uppercase tracking-widest text-gray-900 focus:ring-0 cursor-pointer bg-transparent outline-none"
+            >
+              {[
+                { label: 'Recommended', value: 'none' },
+                { label: 'Newest', value: 'newest' },
+                { label: 'Price: Low to High', value: 'price_low' },
+                { label: 'Price: High to Low', value: 'price_high' },
+              ].map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 md:gap-x-8 md:gap-y-16 pb-20">
           {filteredProducts.map((product, index) => (
             <Link
@@ -147,7 +196,6 @@ const Shop: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile Sticky Sort & Filter Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 flex shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <button
           onClick={() => setIsSortOpen(true)}
@@ -174,7 +222,6 @@ const Shop: React.FC = () => {
         </button>
       </div>
 
-      {/* Sort Modal */}
       {isSortOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsSortOpen(false)}></div>
@@ -205,12 +252,10 @@ const Shop: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Modal */}
       {isFilterOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)}></div>
           <div className="relative w-full bg-white rounded-t-2xl h-[70vh] flex flex-col animate-slide-up">
-            {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900">Filter</h3>
               <button onClick={() => setIsFilterOpen(false)} className="p-2 -mr-2 text-gray-400">
@@ -218,7 +263,6 @@ const Shop: React.FC = () => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <div className="mb-6">
                 <h4 className="text-xs font-bold text-gray-900 uppercase mb-4">Filter By</h4>
@@ -251,7 +295,6 @@ const Shop: React.FC = () => {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="p-4 border-t border-gray-100 flex gap-4">
               <button
                 onClick={() => setSelectedTypes([])}

@@ -34,14 +34,15 @@ export interface Story {
 export interface Product {
   id: string;
   name: string;
+  subtitle?: string;
   description: string;
   price: number;
   salePrice?: number;
   category: Category;
   images: string[];
   colors: string[];
-  colorStock?: { [key: string]: number }; // Keeping for backward compatibility if needed, but variantStock is preferred
-  variantStock?: { [key: string]: number }; // Key: "Color_Size"
+  colorStock?: { [key: string]: number };
+  variantStock?: { [key: string]: number };
   sizes: string[];
   stock: number;
   isNew?: boolean;
@@ -76,6 +77,18 @@ export interface Order {
     address: string;
     phone: string;
     pincode?: string;
+    instagramId?: string;
   };
   paymentMethod?: string;
+}
+export interface Review {
+  id: string;
+  productId: string;
+  productName: string;
+  productImage: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
 }

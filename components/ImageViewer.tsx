@@ -47,7 +47,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, isOpen,
         const touchEnd = e.changedTouches[0].clientX;
         const diff = touchStart.current - touchEnd;
 
-        if (Math.abs(diff) > 50) { // Swipe threshold
+        if (Math.abs(diff) > 50) {
             if (diff > 0) handleNext();
             else handlePrev();
         }

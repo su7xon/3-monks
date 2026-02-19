@@ -18,6 +18,7 @@ const Checkout: React.FC = () => {
     address: '',
     city: '',
     pincode: '',
+    instagramId: '',
   });
 
   const total = cart.reduce((acc, item) => acc + (item.salePrice || item.price) * item.quantity, 0);
@@ -42,6 +43,7 @@ const Checkout: React.FC = () => {
         email: form.email,
         phone: form.phone,
         address: `${form.address}, ${form.city}`,
+        instagramId: form.instagramId,
         pincode: form.pincode,
       },
       paymentMethod,
@@ -49,38 +51,9 @@ const Checkout: React.FC = () => {
 
     await addOrder(order);
 
-    if (paymentMethod === 'whatsapp') {
-      const itemsList = cart.map(item =>
-        `• ${item.name} (${item.selectedSize}) x${item.quantity} - ₹${(item.salePrice || item.price) * item.quantity}`
-      ).join('\n');
+    // Navigate to success page where user will complete the payment action
+    // This approach is more reliable for mobile deep linking
 
-      const text = `Hyyy! 👋 I would like to make a purchase from the store.\n\n` +
-        `*Order ID:* ${order.id}\n\n` +
-        `*Customer Details:*\n` +
-        `Name: ${form.name}\n` +
-        `Phone: ${form.phone}\n` +
-        `Email: ${form.email}\n` +
-        `Address: ${form.address}, ${form.city} - ${form.pincode}\n\n` +
-        `*Order Summary:*\n${itemsList}\n\n` +
-        `*Total Amount:* ₹${total}\n\n` +
-        `--------------------------------\n` +
-        `Please confirm my order! ✨`;
-
-      const whatsappNumber = '919045848613';
-      const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-    } else if (paymentMethod === 'instagram') {
-      const username = 'the_3monks_clo';
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        window.location.href = `instagram://user?username=${username}`;
-      } else {
-        window.open(`https://www.instagram.com/${username}`, '_blank');
-      }
-    }
-
-    clearCart();
     setLoading(false);
     navigate('/order-success', { state: { order, paymentMethod } });
   };
@@ -98,10 +71,8 @@ const Checkout: React.FC = () => {
         </h1>
 
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 lg:gap-16">
-          {}
           <div className="lg:col-span-7 space-y-12">
 
-            {}
             <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <h2 className="text-sm md:text-lg font-oswald font-bold uppercase tracking-widest mb-3 md:mb-5 flex items-center gap-2">
@@ -120,14 +91,13 @@ const Checkout: React.FC = () => {
                     />
                   </div>
                   <div className="col-span-2 md:col-span-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Email</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Email (Optional)</label>
                     <input
-                      required
                       type="email"
                       value={form.email}
                       onChange={e => setForm({ ...form, email: e.target.value })}
                       className="w-full bg-transparent border-b border-gray-300 py-2 focus:border-black transition-colors outline-none text-sm placeholder-gray-300"
-                      placeholder="email@example.com"
+                      placeholder="email@example.com (Optional)"
                     />
                   </div>
                   <div className="col-span-2 md:col-span-1">
@@ -171,10 +141,18 @@ const Checkout: React.FC = () => {
                       placeholder="Pincode"
                     />
                   </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Instagram ID (Optional)</label>
+                    <input
+                      value={form.instagramId || ''}
+                      onChange={e => setForm({ ...form, instagramId: e.target.value })}
+                      className="w-full bg-transparent border-b border-gray-300 py-2 focus:border-black transition-colors outline-none text-sm placeholder-gray-300"
+                      placeholder="@your_handle (Optional)"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {}
               <div>
                 <h2 className="text-sm md:text-lg font-oswald font-bold uppercase tracking-widest mb-3 md:mb-5 flex items-center gap-2">
                   <span className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center text-[10px]">2</span>
@@ -182,7 +160,6 @@ const Checkout: React.FC = () => {
                 </h2>
 
                 <div className="space-y-2">
-                  {}
                   <label
                     className={`block cursor-pointer border px-3 md:px-5 py-3 md:py-4 transition-all duration-200 ${paymentMethod === 'instagram' ? 'border-2 border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
                   >
@@ -205,7 +182,6 @@ const Checkout: React.FC = () => {
                     </div>
                   </label>
 
-                  {}
                   <label
                     className={`block cursor-pointer border px-3 md:px-5 py-3 md:py-4 transition-all duration-200 ${paymentMethod === 'whatsapp' ? 'border-2 border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
                   >
@@ -232,7 +208,6 @@ const Checkout: React.FC = () => {
             </form>
           </div>
 
-          {}
           <div className="lg:col-span-5">
             <div className="bg-gray-50 p-4 md:p-6 lg:p-8 border border-gray-100 lg:sticky lg:top-24">
               <h2 className="text-base md:text-xl font-oswald font-bold uppercase tracking-widest mb-4 md:mb-6 border-b border-gray-200 pb-3 md:pb-4">
@@ -273,7 +248,6 @@ const Checkout: React.FC = () => {
                 </div>
               </div>
 
-              {}
               <button
                 type="submit"
                 form="checkout-form"
@@ -283,16 +257,22 @@ const Checkout: React.FC = () => {
                 {loading ? 'PROCESSING...' : `PAY ₹${total}`}
               </button>
 
-              {}
               <div className="mt-6 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-gray-400">
                   By placing this order you agree to our terms
                 </p>
                 <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs font-bold uppercase text-green-700 tracking-wider mb-1">
+                    EXCHANGE AVAILABLE
+                  </p>
                   <p className="text-xs font-bold uppercase text-red-600 tracking-wider">
                     NO RETURNS • NO REFUNDS
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-1">All sales are final.</p>
+                  <div className="text-[11px] font-medium text-gray-700 mt-3 space-y-2">
+                    <p>For exchange a product opening video is required.</p>
+                    <p>You will need to pay the shipping for the return of the package.</p>
+                    <p>Exchange available only if there is a size issue.</p>
+                  </div>
                 </div>
               </div>
 

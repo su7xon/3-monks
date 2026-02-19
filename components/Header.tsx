@@ -29,7 +29,6 @@ const Header: React.FC = () => {
   return (
     <header className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${headerBg} py-4`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        {}
         <div className="hidden md:flex items-center space-x-6 flex-1">
           <Link to="/">
             <img
@@ -45,7 +44,6 @@ const Header: React.FC = () => {
           </nav>
         </div>
 
-        {}
         <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
           <img
             src="/images/logo.png"
@@ -57,11 +55,7 @@ const Header: React.FC = () => {
           </span>
         </Link>
 
-        {}
         <div className="flex items-center space-x-6 text-gray-900 flex-1 justify-end">
-          <Link to="/admin" className={`hidden md:block uppercase text-[10px] border ${borderColor} px-3 py-1 hover:bg-gray-900 hover:text-white transition-all`}>
-            Admin
-          </Link>
 
           <Link to="/cart" className="relative group" aria-label="Shopping cart">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -74,7 +68,6 @@ const Header: React.FC = () => {
             )}
           </Link>
 
-          {}
           <button
             className="md:hidden z-50 text-gray-900"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -93,7 +86,6 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 md:hidden"
@@ -101,9 +93,8 @@ const Header: React.FC = () => {
         />
       )}
 
-      {}
+      { }
       <div className={`fixed top-0 right-0 h-full w-[70%] max-w-[280px] bg-white z-40 shadow-2xl transition-transform duration-300 ease-out transform ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} md:hidden`}>
-        {}
         <div className="flex justify-end p-6">
           <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-900">
@@ -112,12 +103,10 @@ const Header: React.FC = () => {
           </button>
         </div>
 
-        {}
         <nav className="flex flex-col px-6">
           <Link to="/shop" className="py-4 text-lg font-semibold text-gray-900 border-b border-gray-100">Shop Collection</Link>
           <Link to="/about" className="py-4 text-lg font-semibold text-gray-900 border-b border-gray-100">Our Story</Link>
           <Link to="/contact" className="py-4 text-lg font-semibold text-gray-900 border-b border-gray-100">Contact</Link>
-          <Link to="/admin" className="py-4 text-sm font-medium text-gray-500 mt-4">Admin Access</Link>
         </nav>
       </div>
     </header>

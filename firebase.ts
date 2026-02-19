@@ -5,9 +5,13 @@ import {
     doc,
     setDoc,
     deleteDoc,
-    onSnapshot
+    onSnapshot,
+    query,
+    where,
+    getDocs,
+    updateDoc
 } from 'firebase/firestore';
-import { Product, Order, CategoryWithImage, SiteConfig } from './types';
+import { Product, Order, CategoryWithImage, SiteConfig, Review } from './types';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAH-u3HGlVPYexW4oviSRKXD56_KUWvslw",
@@ -24,7 +28,7 @@ const db = getFirestore(app);
 
 console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
 
-const CLOUDINARY_CLOUD_NAME = 'dnn0km7fu';
+const CLOUDINARY_CLOUD_NAME = 'dwmokskbk';
 const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
 
 export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
@@ -34,10 +38,10 @@ export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
 
     try {
         console.log('[Cloudinary] Fetching image from URL...');
-        
+
         const response = await fetch(imageUrl);
         const blob = await response.blob();
-        
+
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = async () => {
@@ -53,8 +57,48 @@ export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
             reader.readAsDataURL(blob);
         });
     } catch (error: any) {
-        console.error('[Cloudinary] Migration failed:', error?.message || error);
-        return imageUrl;
+        const msg = error?.message || String(error);
+        console.error('[Cloudinary] Migration failed:', msg);
+    }
+};
+
+export const migrateImage = async (oldUrl: string): Promise<string> => {
+    // Only migrate if it's from the OLD Cloudinary account
+    if (!oldUrl.includes('res.cloudinary.com/dnn0km7fu')) {
+        return oldUrl;
+    }
+
+    try {
+        console.log('[Migration] Migrating image:', oldUrl);
+
+        // DIRECT UPLOAD via Cloudinary (they handle the fetch)
+        // This avoids CORS issues in the browser
+        const formData = new FormData();
+        formData.append('file', oldUrl);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.secure_url) {
+            const optimizedUrl = data.secure_url.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
+            console.log('[Migration] Success:', optimizedUrl);
+            return optimizedUrl;
+        } else {
+            const errorMsg = data.error?.message || 'Unknown Cloudinary error';
+            throw new Error(errorMsg);
+        }
+
+    } catch (error: any) {
+        console.error('[Migration] Failed for:', oldUrl, error);
+        throw error; // Re-throw to be caught by UI
     }
 };
 
@@ -277,7 +321,6 @@ export const subscribeToSiteConfig = (callback: (config: SiteConfig | null) => v
     );
 };
 
-// Stories
 export const storiesCollection = collection(db, 'stories');
 
 export const saveStory = async (story: import('./types').Story) => {
@@ -305,7 +348,6 @@ export const subscribeToStories = (callback: (stories: import('./types').Story[]
         storiesCollection,
         (snapshot) => {
             const stories = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as import('./types').Story));
-            // Sort by newest first
             stories.sort((a, b) => b.createdAt - a.createdAt);
             console.log('[Firebase] Stories loaded:', stories.length);
             callback(stories);
@@ -372,6 +414,118 @@ export const saveAdminPassword = async (newPassword: string): Promise<void> => {
 export const verifyAdminPassword = async (inputPassword: string): Promise<boolean> => {
     const storedPassword = await getAdminPassword();
     return inputPassword === storedPassword;
+};
+
+export const reduceStockForOrder = async (order: Order) => {
+    try {
+        const { getDoc, updateDoc, increment } = await import('firebase/firestore');
+
+        for (const item of order.items) {
+            const productRef = doc(productsCollection, item.id);
+            const productSnap = await getDoc(productRef);
+
+            if (productSnap.exists()) {
+                const productData = productSnap.data() as Product;
+                const quantityToReduce = item.quantity;
+                const updates: any = {};
+
+                if (productData.stock >= quantityToReduce) {
+                    updates.stock = increment(-quantityToReduce);
+                } else {
+                    console.warn(`[Stock] Not enough total stock for ${item.name}. Available: ${productData.stock}, Required: ${quantityToReduce}`);
+                    updates.stock = increment(-quantityToReduce);
+                }
+
+                if (item.selectedSize) {
+                    const colorKey = item.selectedColor || 'Standard';
+                    const variantKey = `${colorKey}_${item.selectedSize}`;
+                    updates[`variantStock.${variantKey}`] = increment(-quantityToReduce);
+                }
+
+                if (item.selectedColor) {
+                    updates[`colorStock.${item.selectedColor}`] = increment(-quantityToReduce);
+                }
+
+                await updateDoc(productRef, updates);
+                console.log(`[Stock] Reduced stock for ${item.name} by ${quantityToReduce}`);
+            }
+        }
+        console.log('[Stock] Stock reduction complete for order:', order.id);
+    } catch (error) {
+        console.error('[Stock] Error reducing stock:', error);
+        throw error;
+    }
+};
+
+const reviewsCollection = collection(db, 'reviews');
+
+export const addReview = async (review: Omit<Review, 'id' | 'status' | 'createdAt'>) => {
+    try {
+        const newReview: Review = {
+            ...review,
+            id: Date.now().toString(),
+            status: 'pending',
+            createdAt: Date.now(),
+        };
+        await setDoc(doc(reviewsCollection, newReview.id), newReview);
+        console.log('[Firebase] Review added:', newReview.id);
+    } catch (error) {
+        console.error('[Firebase] Error adding review:', error);
+        throw error;
+    }
+};
+
+export const getProductReviews = async (productId: string) => {
+    try {
+        const q = query(reviewsCollection, where('productId', '==', productId), where('status', '==', 'approved'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as Review).sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error) {
+        console.error('[Firebase] Error fetching product reviews:', error);
+        return [];
+    }
+};
+
+export const getAllReviews = async () => {
+    try {
+        const snapshot = await getDocs(reviewsCollection);
+        return snapshot.docs.map(doc => doc.data() as Review).sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error) {
+        console.error('[Firebase] Error fetching all reviews:', error);
+        return [];
+    }
+};
+
+export const getApprovedReviews = async () => {
+    try {
+        const q = query(reviewsCollection, where('status', '==', 'approved'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data() as Review).sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error) {
+        console.error('[Firebase] Error fetching approved reviews:', error);
+        return [];
+    }
+};
+
+export const updateReviewStatus = async (reviewId: string, status: 'approved' | 'rejected') => {
+    try {
+        const reviewRef = doc(reviewsCollection, reviewId);
+        await updateDoc(reviewRef, { status });
+        console.log('[Firebase] Review status updated:', reviewId, status);
+    } catch (error) {
+        console.error('[Firebase] Error updating review status:', error);
+        throw error;
+    }
+};
+
+export const deleteReview = async (reviewId: string) => {
+    try {
+        await deleteDoc(doc(reviewsCollection, reviewId));
+        console.log('[Firebase] Review deleted:', reviewId);
+    } catch (error) {
+        console.error('[Firebase] Error deleting review:', error);
+        throw error;
+    }
 };
 
 export { db };
