@@ -146,6 +146,44 @@ export const uploadImages = async (base64Images: string[], _folder?: string, _it
     return urls;
 };
 
+export const getCloudinaryPublicId = (url: string): string | null => {
+    if (!url || !url.includes('cloudinary.com')) return null;
+    // Extract public_id from URL: .../upload/v12345/folder/id.jpg -> folder/id
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return null;
+
+    // Remove version (v12345) and extension (.jpg)
+    const path = parts[1].split('/').slice(1).join('/'); // Skip everything before the first actual path part after /upload/
+    const pathWithoutExtension = path.split('.')[0];
+
+    // If there's a version number like v1234567, we need to handle it.
+    // Actually, Cloudinary URLs usually look like: /upload/v1234/public_id.jpg
+    // Let's try a more robust approach:
+    const regex = /\/upload\/(?:v\d+\/)?(.+?)\.[a-z]+$/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+};
+
+export const deleteCloudinaryImage = async (url: string) => {
+    const publicId = getCloudinaryPublicId(url);
+    if (!publicId) return;
+
+    try {
+        console.log('[Cloudinary] Triggering deletion for:', publicId);
+        const response = await fetch('/.netlify/functions/delete-image', {
+            method: 'POST',
+            body: JSON.stringify({ public_id: publicId }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to delete image');
+        console.log('[Cloudinary] Successfully deleted:', publicId);
+    } catch (error) {
+        console.error('[Cloudinary] Deletion error:', error);
+    }
+};
+
 export const productsCollection = collection(db, 'products');
 export const ordersCollection = collection(db, 'orders');
 export const categoriesCollection = collection(db, 'categories');

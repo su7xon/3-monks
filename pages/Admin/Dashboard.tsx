@@ -142,7 +142,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     }
   };
 
-  const handleRemoveImage = (idx: number) => {
+  const handleRemoveImage = async (idx: number) => {
+    const imageUrl = formData.images?.[idx];
+    if (imageUrl) {
+      try {
+        const { deleteCloudinaryImage } = await import('../../firebase');
+        await deleteCloudinaryImage(imageUrl);
+      } catch (err) {
+        console.error('Error deleting image from Cloudinary:', err);
+      }
+    }
     setFormData(prev => ({ ...prev, images: prev.images?.filter((_, i) => i !== idx) }));
   };
 
@@ -558,12 +567,29 @@ const AdminDashboard: React.FC = () => {
 
   const confirmDelete = async () => {
     if (deleteConfirm.type === 'product') {
+      const product = products.find(p => p.id === deleteConfirm.id);
+      if (product) {
+        try {
+          const { deleteCloudinaryImage } = await import('../../firebase');
+          for (const img of product.images) {
+            await deleteCloudinaryImage(img);
+          }
+        } catch (err) {
+          console.error('Error deleting product images:', err);
+        }
+      }
       removeProduct(deleteConfirm.id);
       showToast('Product deleted', 'success');
     } else if (deleteConfirm.type === 'category') {
       try {
 
         const indexToDelete = parseInt(deleteConfirm.id);
+        const categoryToDelete = categories[indexToDelete];
+        if (categoryToDelete && categoryToDelete.image) {
+          const { deleteCloudinaryImage } = await import('../../firebase');
+          await deleteCloudinaryImage(categoryToDelete.image);
+        }
+
         const filteredCategories = categories.filter((_, i) => i !== indexToDelete);
 
         const { saveCategory } = await import('../../firebase');
