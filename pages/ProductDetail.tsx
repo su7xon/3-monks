@@ -8,9 +8,10 @@ import ImageViewer from '../components/ImageViewer';
 import { ReviewsList, ReviewForm } from '../components/Reviews';
 
 const ProductDetail: React.FC = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
+  const id = slug?.split('-').pop();
   const navigate = useNavigate();
-  const { products, addToCart } = useShop();
+  const { products, addToCart, isLoading } = useShop();
   const { showToast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
@@ -68,6 +69,8 @@ const ProductDetail: React.FC = () => {
   };
 
   useEffect(() => {
+    if (isLoading) return;
+
     const p = products.find(p => p.id === id);
     if (p) {
       setProduct(p);
@@ -79,7 +82,7 @@ const ProductDetail: React.FC = () => {
     } else {
       navigate('/shop');
     }
-  }, [id, products, navigate]);
+  }, [id, products, navigate, isLoading]);
 
   useEffect(() => {
     if (product && selectedSize) {
@@ -134,6 +137,40 @@ const ProductDetail: React.FC = () => {
     navigate('/checkout');
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: `${product.name} | III MONKS`,
+      text: `Check out ${product.name} from III MONKS Premium Streetwear!`,
+      url: window.location.origin + window.location.pathname,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('[Share] Error sharing:', err);
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast('Product link copied!', 'success');
+      } catch (err) {
+        showToast('Failed to copy link', 'error');
+      }
+    }
+  };
+
+  if (isLoading || !product) {
+    return (
+      <div className="pt-32 pb-20 flex flex-col items-center justify-center min-h-screen bg-white">
+        <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
+        <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">Loading Product...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-20 md:pt-24 pb-10 md:pb-16 bg-white min-h-screen text-gray-900">
       <div className="max-w-6xl mx-auto px-4 md:px-6">
@@ -187,7 +224,18 @@ const ProductDetail: React.FC = () => {
                 {product.subtitle && (
                   <p className="text-xs uppercase tracking-widest text-gray-500 mb-2 font-medium">{product.subtitle}</p>
                 )}
-                <h1 className="text-3xl md:text-4xl font-oswald font-bold uppercase tracking-tighter mb-2">{product.name}</h1>
+                <div className="flex items-start justify-between gap-4">
+                  <h1 className="text-3xl md:text-4xl font-oswald font-bold uppercase tracking-tighter mb-2 flex-grow">{product.name}</h1>
+                  <button 
+                    onClick={handleShare}
+                    className="p-2 text-gray-400 hover:text-black transition-colors rounded-full hover:bg-gray-100 group"
+                    title="Share product"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 group-hover:scale-110 transition-transform">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0-10.628a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm0 10.628a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex items-center gap-4 mb-6">
                   <p className="text-2xl font-bold text-gray-900">₹{product.salePrice || product.price}</p>
                   {product.salePrice && (

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useShop } from '../store';
 import { Link, useSearchParams } from 'react-router-dom';
+import { getProductUrl } from '../utils/slugify';
 import AIStylist from '../components/AIStylist';
 
 const Shop: React.FC = () => {
@@ -147,7 +148,7 @@ const Shop: React.FC = () => {
           {filteredProducts.map((product, index) => (
             <Link
               key={product.id}
-              to={`/product/${product.id}`}
+              to={getProductUrl(product.name, product.id)}
               className="group animate-fade-in"
               style={{ animationDelay: `${index * 0.05}s` }}
             >

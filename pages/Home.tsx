@@ -5,6 +5,7 @@ import Stories from '../components/Stories';
 import WallOfLove from '../components/WallOfLove';
 import { Link } from 'react-router-dom';
 import { useShop } from '../store';
+import { getProductUrl } from '../utils/slugify';
 
 const Home: React.FC = () => {
   const { products, categories, isLoading } = useShop();
@@ -118,7 +119,7 @@ const Home: React.FC = () => {
               {products.filter(p => p.isTrending).slice(0, 8).map((product) => (
                 <Link
                   key={product.id}
-                  to={`/product/${product.id}`}
+                  to={getProductUrl(product.name, product.id)}
                   className="group w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1.125rem)]"
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-gray-100 rounded-sm mb-2">
