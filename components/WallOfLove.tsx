@@ -69,7 +69,7 @@ const WallOfLove: React.FC = () => {
                     {'★'.repeat(5)}
                 </div>
                 <p className="text-[#D1476B] font-medium tracking-wide">
-                    Trusted by 300+ souls worldwide.
+                    Trusted by 500+ souls worldwide.
                 </p>
             </div>
 
