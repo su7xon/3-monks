@@ -28,7 +28,7 @@ const db = getFirestore(app);
 
 console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
 
-const CLOUDINARY_CLOUD_NAME = 'dwmokskbk';
+const CLOUDINARY_CLOUD_NAME = 'qyxgcufu';
 const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
 
 export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
@@ -191,13 +191,22 @@ export const categoriesCollection = collection(db, 'categories');
 export const siteConfigDoc = doc(db, 'config', 'siteConfig');
 
 const removeUndefined = (obj: any): any => {
-    const cleaned: any = {};
-    for (const key in obj) {
-        if (obj[key] !== undefined) {
-            cleaned[key] = obj[key];
-        }
+    if (obj === null || obj === undefined) {
+        return obj;
     }
-    return cleaned;
+    if (Array.isArray(obj)) {
+        return obj.map(item => removeUndefined(item));
+    }
+    if (typeof obj === 'object') {
+        const cleaned: any = {};
+        for (const key in obj) {
+            if (obj[key] !== undefined) {
+                cleaned[key] = removeUndefined(obj[key]);
+            }
+        }
+        return cleaned;
+    }
+    return obj;
 };
 
 export const saveProduct = async (product: Product) => {
@@ -230,7 +239,8 @@ export const deleteProduct = async (productId: string) => {
 
 export const saveOrder = async (order: Order) => {
     try {
-        await setDoc(doc(ordersCollection, order.id), order);
+        const cleanOrder = removeUndefined(order);
+        await setDoc(doc(ordersCollection, order.id), cleanOrder);
         console.log('[Firebase] Order saved:', order.id);
     } catch (error) {
         console.error('[Firebase] Error saving order:', error);
@@ -245,6 +255,17 @@ export const deleteOrder = async (orderId: string) => {
     } catch (error) {
         console.error('[Firebase] Error deleting order:', error);
         throw error;
+    }
+};
+
+export const getOrder = async (orderId: string): Promise<Order | null> => {
+    try {
+        const { getDoc } = await import('firebase/firestore');
+        const snapshot = await getDoc(doc(ordersCollection, orderId));
+        return snapshot.exists() ? { ...snapshot.data(), id: snapshot.id } as Order : null;
+    } catch (error) {
+        console.error('[Firebase] Error getting order:', error);
+        return null;
     }
 };
 
@@ -291,16 +312,12 @@ export const subscribeToProducts = (callback: (products: Product[]) => void) => 
             const products = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
 
             products.sort((a, b) => {
-
-                const getTimestamp = (id: string) => {
-                    const match = id.match(/prod_(\d+)/);
-                    return match ? parseInt(match[1], 10) : 0;
-                };
-                const timeA = getTimestamp(a.id);
-                const timeB = getTimestamp(b.id);
-
+                let timeA = Number(a.createdAt) || 0;
+                let timeB = Number(b.createdAt) || 0;
+                if (isNaN(timeA)) timeA = 0;
+                if (isNaN(timeB)) timeB = 0;
+                
                 if (timeA !== timeB) return timeB - timeA;
-
                 return b.id.localeCompare(a.id);
             });
             console.log('[Firebase] Products loaded:', products.length);
@@ -319,6 +336,22 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
             const orders = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order));
 
             orders.sort((a, b) => {
+                const getTime = (dateVal: any) => {
+                    if (!dateVal) return 0;
+                    if (typeof dateVal === 'string' || typeof dateVal === 'number') {
+                        const d = new Date(dateVal).getTime();
+                        return isNaN(d) ? 0 : d;
+                    }
+                    if (dateVal.toDate) {
+                        return dateVal.toDate().getTime();
+                    }
+                    return 0;
+                };
+                const timeA = getTime(a.date);
+                const timeB = getTime(b.date);
+                
+                if (timeA !== timeB) return timeB - timeA;
+                
                 if (a.id < b.id) return 1;
                 if (a.id > b.id) return -1;
                 return 0;
@@ -421,7 +454,7 @@ export const subscribeToProductTypes = (callback: (types: string[]) => void) => 
 };
 
 const adminAuthDoc = doc(db, 'settings', 'adminAuth');
-const DEFAULT_ADMIN_PASSWORD = 'monks.001';
+const DEFAULT_ADMIN_PASSWORD = '3monks';
 
 export const getAdminPassword = async (): Promise<string> => {
     try {
@@ -474,14 +507,19 @@ export const reduceStockForOrder = async (order: Order) => {
                     updates.stock = increment(-quantityToReduce);
                 }
 
+                const variantStock = productData.variantStock || {};
+                const colorStock = productData.colorStock || {};
+                
                 if (item.selectedSize) {
                     const colorKey = item.selectedColor || 'Standard';
                     const variantKey = `${colorKey}_${item.selectedSize}`;
-                    updates[`variantStock.${variantKey}`] = increment(-quantityToReduce);
+                    variantStock[variantKey] = Math.max(0, (variantStock[variantKey] || 0) - quantityToReduce);
+                    updates.variantStock = variantStock;
                 }
 
                 if (item.selectedColor) {
-                    updates[`colorStock.${item.selectedColor}`] = increment(-quantityToReduce);
+                    colorStock[item.selectedColor] = Math.max(0, (colorStock[item.selectedColor] || 0) - quantityToReduce);
+                    updates.colorStock = colorStock;
                 }
 
                 await updateDoc(productRef, updates);
@@ -564,6 +602,79 @@ export const deleteReview = async (reviewId: string) => {
         console.error('[Firebase] Error deleting review:', error);
         throw error;
     }
+};
+
+const giveawaysCollection = collection(db, 'giveaways');
+const giveawayConfigDoc = doc(db, 'settings', 'giveaway');
+
+export const checkGiveawayPhoneExists = async (phone: string): Promise<boolean> => {
+  try {
+    const q = query(giveawaysCollection, where('phone', '==', phone));
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.error('[Firebase] Error checking phone:', error);
+    throw error;
+  }
+};
+
+export const saveGiveawayEntry = async (entry: import('./types').GiveawayEntry) => {
+  try {
+    await setDoc(doc(giveawaysCollection, entry.id), entry);
+    console.log('[Firebase] Giveaway entry saved:', entry.id);
+  } catch (error) {
+    console.error('[Firebase] Error saving giveaway entry:', error);
+    throw error;
+  }
+};
+
+export const subscribeToGiveawayEntries = (callback: (entries: import('./types').GiveawayEntry[]) => void) => {
+  return onSnapshot(
+    giveawaysCollection,
+    (snapshot) => {
+      const entries = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as import('./types').GiveawayEntry));
+      entries.sort((a, b) => b.createdAt - a.createdAt);
+      console.log('[Firebase] Giveaway entries loaded:', entries.length);
+      callback(entries);
+    },
+    (error) => {
+      console.error('[Firebase] Error subscribing to giveaway entries:', error);
+    }
+  );
+};
+
+export const deleteGiveawayEntry = async (entryId: string) => {
+  try {
+    await deleteDoc(doc(giveawaysCollection, entryId));
+    console.log('[Firebase] Giveaway entry deleted:', entryId);
+  } catch (error) {
+    console.error('[Firebase] Error deleting giveaway entry:', error);
+    throw error;
+  }
+};
+
+export const subscribeToGiveawayConfig = (callback: (enabled: boolean) => void) => {
+  return onSnapshot(
+    giveawayConfigDoc,
+    (snapshot) => {
+      const enabled = snapshot.exists() ? snapshot.data()?.enabled === true : false;
+      console.log('[Firebase] Giveaway config loaded, enabled:', enabled);
+      callback(enabled);
+    },
+    (error) => {
+      console.error('[Firebase] Error subscribing to giveaway config:', error);
+    }
+  );
+};
+
+export const saveGiveawayConfig = async (enabled: boolean) => {
+  try {
+    await setDoc(giveawayConfigDoc, { enabled });
+    console.log('[Firebase] Giveaway config saved, enabled:', enabled);
+  } catch (error) {
+    console.error('[Firebase] Error saving giveaway config:', error);
+    throw error;
+  }
 };
 
 export { db };

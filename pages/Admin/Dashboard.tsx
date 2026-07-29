@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useShop } from '../../store';
-import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story, Review } from '../../types';
+import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story, Review, GiveawayEntry } from '../../types';
 import { useToast } from '../../components/Toast';
+import imageCompression from 'browser-image-compression';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -15,7 +16,7 @@ const ConfirmDialog: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl text-black">
         <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
         <p className="text-sm text-gray-600 mb-6">{message}</p>
         <div className="flex gap-3">
@@ -54,6 +55,7 @@ const EMPTY_FORM: Partial<Product> = {
   stock: 0,
   isNew: true,
   isFeatured: false,
+  isTopPick: false,
   productType: ''
 };
 
@@ -109,8 +111,11 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
       isNew: formData.isNew || false,
       isFeatured: formData.isFeatured || false,
       isTrending: formData.isTrending || false,
+      isTopPick: formData.isTopPick || false,
+      isBestSeller: formData.isBestSeller || false,
       productType: formData.productType || '',
-      createdAt: isNew ? Date.now() : (product?.createdAt || Date.now()),
+      sizeGuide: formData.sizeGuide,
+      createdAt: isNew ? Date.now() : product?.createdAt,
     };
 
     if (formData.salePrice && formData.salePrice > 0) {
@@ -127,17 +132,28 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          setFormData(prev => ({ ...prev, images: [...(prev.images || []), base64] }));
-        };
-        reader.readAsDataURL(file);
+        try {
+          const options = {
+            maxSizeMB: 0.2, // Compress aggressively to max 200KB
+            maxWidthOrHeight: 1080,
+            useWebWorker: true
+          };
+          const compressedFile = await imageCompression(file, options);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            setFormData(prev => ({ ...prev, images: [...(prev.images || []), base64] }));
+          };
+          reader.readAsDataURL(compressedFile);
+        } catch (error) {
+          console.error("Error compressing image:", error);
+          showToast("Image compression failed. Image might be corrupted.", "error");
+        }
       }
     }
   };
@@ -192,7 +208,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center">
-      <div className="bg-white w-full md:rounded-xl md:max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl text-black">
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-bold text-gray-900">
             {isNew ? 'Add New Product' : 'Edit Product'}
@@ -378,6 +394,106 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           )}
 
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-gray-900">SIZE GUIDE</label>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-500 uppercase">Unit</span>
+                <select
+                  value={formData.sizeGuide?.unit || 'inches'}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    sizeGuide: { ...prev.sizeGuide, unit: e.target.value as 'inches' | 'cm', measurements: prev.sizeGuide?.measurements || [] }
+                  }))}
+                  className="bg-white border border-gray-200 rounded px-2 py-1 text-xs outline-none"
+                >
+                  <option value="inches">Inches</option>
+                  <option value="cm">cm</option>
+                </select>
+              </div>
+            </div>
+            
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4">
+              ADD MEASUREMENT ROWS (E.G. CHEST, LENGTH). SHOWN TO CUSTOMERS AS A "SIZE GUIDE" TABLE ON THE PRODUCT PAGE.
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-700">
+                <thead>
+                  <tr>
+                    <th className="font-bold tracking-widest pb-2 uppercase text-gray-500">Measurement</th>
+                    {formData.sizes?.map(size => (
+                      <th key={size} className="font-bold tracking-widest pb-2 uppercase text-gray-500 text-center w-16">{size}</th>
+                    ))}
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody className="space-y-2">
+                  {formData.sizeGuide?.measurements?.map((measurement, mIdx) => (
+                    <tr key={mIdx}>
+                      <td className="pr-2 pb-2">
+                        <input
+                          type="text"
+                          value={measurement.name}
+                          onChange={(e) => {
+                            const newMeasurements = [...(formData.sizeGuide?.measurements || [])];
+                            newMeasurements[mIdx] = { ...newMeasurements[mIdx], name: e.target.value };
+                            setFormData(prev => ({ ...prev, sizeGuide: { ...prev.sizeGuide!, measurements: newMeasurements } }));
+                          }}
+                          className="w-full bg-white border border-gray-200 px-3 py-2 rounded outline-none text-black"
+                          placeholder="e.g. Chest"
+                        />
+                      </td>
+                      {formData.sizes?.map(size => (
+                        <td key={size} className="px-1 pb-2">
+                          <input
+                            type="text"
+                            value={measurement.values[size] || ''}
+                            onChange={(e) => {
+                              const newMeasurements = [...(formData.sizeGuide?.measurements || [])];
+                              newMeasurements[mIdx] = { ...newMeasurements[mIdx], values: { ...newMeasurements[mIdx].values, [size]: e.target.value } };
+                              setFormData(prev => ({ ...prev, sizeGuide: { ...prev.sizeGuide!, measurements: newMeasurements } }));
+                            }}
+                            className="w-full text-center bg-white border border-gray-200 px-1 py-2 rounded outline-none text-black"
+                            placeholder="-"
+                          />
+                        </td>
+                      ))}
+                      <td className="pl-2 pb-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newMeasurements = formData.sizeGuide!.measurements.filter((_, idx) => idx !== mIdx);
+                            setFormData(prev => ({ ...prev, sizeGuide: { ...prev.sizeGuide!, measurements: newMeasurements } }));
+                          }}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 mx-auto"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  sizeGuide: {
+                    unit: prev.sizeGuide?.unit || 'inches',
+                    measurements: [...(prev.sizeGuide?.measurements || []), { name: '', values: {} }]
+                  }
+                }));
+              }}
+              className="mt-2 flex items-center gap-1 text-[10px] font-bold tracking-widest text-gray-500 hover:text-black uppercase transition-colors"
+            >
+              + ADD MEASUREMENT ROW
+            </button>
+          </div>
+
           <div className="space-y-3">
             <label className="text-xs font-semibold text-gray-500 block">Product Tags</label>
             <div className="flex flex-wrap gap-4">
@@ -392,6 +508,14 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={formData.isTrending || false} onChange={(e) => setFormData(prev => ({ ...prev, isTrending: e.target.checked }))} className="w-5 h-5 accent-orange-500 rounded" />
                 <span className="text-sm font-medium">🔥 Trending</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formData.isBestSeller || false} onChange={(e) => setFormData(prev => ({ ...prev, isBestSeller: e.target.checked }))} className="w-5 h-5 accent-blue-500 rounded" />
+                <span className="text-sm font-medium">⭐ Best Seller</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={formData.isTopPick || false} onChange={(e) => setFormData(prev => ({ ...prev, isTopPick: e.target.checked }))} className="w-5 h-5 accent-purple-500 rounded" />
+                <span className="text-sm font-medium">🎯 Top Pick</span>
               </label>
             </div>
           </div>
@@ -422,6 +546,158 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   );
 };
 
+const GiveawayManager: React.FC<{
+  entries: GiveawayEntry[];
+  onDelete: (id: string) => Promise<void>;
+  showToast: (msg: string, type: 'success' | 'error') => void;
+  giveawayEnabled: boolean;
+  setGiveawayEnabled: (enabled: boolean) => Promise<void>;
+}> = ({ entries, onDelete, showToast, giveawayEnabled, setGiveawayEnabled }) => {
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [winner, setWinner] = useState<GiveawayEntry | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const spinRef = useRef<number>(0);
+  const totalEntries = entries.length;
+
+  const pickWinner = () => {
+    if (totalEntries === 0) {
+      showToast('No entries to pick from', 'error');
+      return;
+    }
+    if (isSpinning) return;
+
+    setIsSpinning(true);
+    setWinner(null);
+
+    const shuffled = [...entries].sort(() => Math.random() - 0.5);
+    let count = 0;
+    const totalSteps = 25 + Math.floor(Math.random() * 20);
+    const interval = 40;
+
+    const spin = () => {
+      count++;
+      const idx = Math.floor(Math.random() * totalEntries);
+      setDisplayName(shuffled[idx].name);
+
+      if (count >= totalSteps) {
+        const finalWinner = shuffled[Math.floor(Math.random() * totalEntries)];
+        setDisplayName(finalWinner.name);
+        setTimeout(() => {
+          setWinner(finalWinner);
+          setIsSpinning(false);
+          showToast(`Winner: ${finalWinner.name}!`, 'success');
+        }, 300);
+        return;
+      }
+
+      const delay = interval + Math.random() * count * 6;
+      spinRef.current = window.setTimeout(spin, delay);
+    };
+
+    spin();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (spinRef.current) clearTimeout(spinRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-gray-900">Giveaway Status</h3>
+          <p className="text-sm text-gray-500 mt-0.5">{giveawayEnabled ? 'Giveaway is live — users can see and enter' : 'Giveaway is hidden from users'}</p>
+        </div>
+        <button
+          onClick={() => setGiveawayEnabled(!giveawayEnabled)}
+          className={`relative w-14 h-7 rounded-full transition-all ${giveawayEnabled ? 'bg-gray-900' : 'bg-gray-300'}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-all ${giveawayEnabled ? 'translate-x-7' : ''}`} />
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 text-center text-white">
+        <h2 className="text-xl font-bold mb-2">🎁 Giveaway Random Picker</h2>
+        <p className="text-gray-400 text-sm mb-6">{totalEntries} participants</p>
+
+        <div className="w-48 h-48 rounded-full border-4 border-white/20 mx-auto mb-6 flex items-center justify-center bg-white/5 backdrop-blur-sm">
+          {winner ? (
+            <div className="text-center animate-pulse">
+              <p className="text-2xl font-black tracking-tight">{winner.name}</p>
+              <p className="text-sm text-gray-400 mt-1">🏆 Winner!</p>
+            </div>
+          ) : isSpinning ? (
+            <p className="text-2xl font-black tracking-tight animate-pulse">{displayName}</p>
+          ) : (
+            <div className="text-center">
+              <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              <p className="text-sm text-gray-400">Click to spin</p>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={pickWinner}
+          disabled={isSpinning || totalEntries === 0}
+          className="px-8 py-3 bg-white text-gray-900 font-bold rounded-full text-sm uppercase tracking-widest hover:bg-gray-100 transition-all disabled:opacity-40"
+        >
+          {isSpinning ? 'Spinning...' : 'Pick Winner'}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="font-bold text-gray-900">All Entries ({totalEntries})</h3>
+        </div>
+        {totalEntries === 0 ? (
+          <div className="p-12 text-center text-gray-500 text-sm">No entries yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Phone</th>
+                  <th className="px-6 py-4">Instagram</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {entries.map(entry => (
+                  <tr key={entry.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{entry.name}</td>
+                    <td className="px-6 py-4 text-gray-600">{entry.phone}</td>
+                    <td className="px-6 py-4 text-gray-600">{entry.instagram || '—'}</td>
+                    <td className="px-6 py-4 text-gray-500">{new Date(entry.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this entry?')) {
+                            onDelete(entry.id);
+                            showToast('Entry deleted', 'success');
+                          }
+                        }}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard: React.FC = () => {
   const {
     products,
@@ -445,20 +721,30 @@ const AdminDashboard: React.FC = () => {
     reduceStock,
     getAllReviews,
     updateReviewStatus,
-    deleteReview
+    deleteReview,
+    giveawayEntries,
+    addGiveawayEntry,
+    deleteGiveawayEntry,
+    giveawayEnabled,
+    setGiveawayEnabled
   } = useShop();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews' | 'giveaway'>(() => {
+    return (localStorage.getItem('adminTab') as any) || 'products';
+  });
   const [reviews, setReviews] = useState<Review[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [showPendingOrders, setShowPendingOrders] = useState(false);
   const [configForm, setConfigForm] = useState<SiteConfig>(siteConfig);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: string; id: string; name: string }>({ isOpen: false, type: '', id: '', name: '' });
 
-
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('adminAuth') === 'true';
+  });
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -467,6 +753,10 @@ const AdminDashboard: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => { setConfigForm(siteConfig); }, [siteConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('adminTab', activeTab);
+  }, [activeTab]);
 
   const handleLogin = async () => {
     if (!loginPassword.trim()) {
@@ -480,7 +770,7 @@ const AdminDashboard: React.FC = () => {
       const isValid = await verifyAdminPassword(loginPassword);
       if (isValid) {
         setIsAuthenticated(true);
-        sessionStorage.setItem('adminAuth', 'true');
+        localStorage.setItem('adminAuth', 'true');
       } else {
         setLoginError('Incorrect password');
       }
@@ -523,14 +813,14 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (sessionStorage.getItem('adminAuth') === 'true') {
+    if (localStorage.getItem('adminAuth') === 'true') {
       setIsAuthenticated(true);
     }
   }, []);
 
   if (!isAuthenticated) {
     return (
-      <div className="pt-20 pb-10 bg-gray-50 min-h-screen flex items-center justify-center px-4">
+      <div className="pt-20 pb-10 bg-gray-50 min-h-screen flex items-center justify-center px-4 text-black">
         <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Login</h1>
@@ -729,11 +1019,12 @@ const AdminDashboard: React.FC = () => {
     { id: 'product-types' as const, label: 'Filters', icon: '⚡' },
     { id: 'orders' as const, label: 'Orders', icon: '📋' },
     { id: 'reviews' as const, label: 'Reviews', icon: '⭐' },
+    { id: 'giveaway' as const, label: 'Giveaway', icon: '🎁' },
     { id: 'config' as const, label: 'Settings', icon: '⚙️' },
   ];
 
   return (
-    <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen">
+    <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen text-black">
       <div className="max-w-6xl mx-auto px-4">
         <div className="py-6">
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -762,16 +1053,30 @@ const AdminDashboard: React.FC = () => {
 
         {activeTab === 'products' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-gray-100 gap-4">
               <h2 className="text-base font-bold text-gray-900">Products ({products.length})</h2>
-              <button onClick={handleAddProduct} className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 text-sm font-semibold rounded-lg active:scale-[0.98] transition-transform">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                Add
-              </button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition-colors"
+                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </div>
+                <button onClick={handleAddProduct} className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 text-sm font-semibold rounded-lg active:scale-[0.98] transition-transform flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  Add
+                </button>
+              </div>
             </div>
 
             <div className="divide-y divide-gray-100">
-              {products.map(product => (
+              {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(product => (
                 <div key={product.id} className="p-4 flex gap-4">
                   <img src={product.images[0] || 'https://via.placeholder.com/80'} className="w-16 h-20 object-cover rounded-lg bg-gray-100 flex-shrink-0" alt="" />
                   <div className="flex-1 min-w-0">
@@ -785,7 +1090,16 @@ const AdminDashboard: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-lg font-bold text-gray-900">₹{product.price}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                        {product.salePrice ? (
+                          <>
+                            <span className="text-lg font-bold text-red-600">₹{product.salePrice}</span>
+                            <span className="text-sm text-gray-400 line-through">₹{product.price}</span>
+                          </>
+                        ) : (
+                          <span className="text-lg font-bold text-gray-900">₹{product.price}</span>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={() => handleEditProduct(product)} className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg">Edit</button>
                         <button onClick={() => handleDeleteProduct(product)} className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">Delete</button>
@@ -794,8 +1108,8 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {products.length === 0 && (
-                <div className="p-12 text-center text-gray-400">No products yet. Add your first product!</div>
+              {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).length === 0 && (
+                <div className="p-12 text-center text-gray-400">No products found.</div>
               )}
             </div>
           </div>
@@ -817,12 +1131,19 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex gap-2">
                       <label className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer">
                         📷 Change
-                        <input type="file" accept="image/*" onChange={(e) => {
+                        <input type="file" accept="image/*" onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => handleUpdateCategoryImage(index, reader.result as string);
-                            reader.readAsDataURL(file);
+                            try {
+                              const options = { maxSizeMB: 0.1, maxWidthOrHeight: 600, useWebWorker: true };
+                              const compressedFile = await imageCompression(file, options);
+                              const reader = new FileReader();
+                              reader.onloadend = () => handleUpdateCategoryImage(index, reader.result as string);
+                              reader.readAsDataURL(compressedFile);
+                            } catch (error) {
+                              console.error("Error compressing category image:", error);
+                              showToast("Compression failed", "error");
+                            }
                           }
                         }} className="hidden" />
                       </label>
@@ -914,8 +1235,8 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'orders' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
-                <h2 className="text-base font-bold text-gray-900">Orders ({orders.length})</h2>
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-base font-bold text-gray-900">Orders ({orders.length}){orders.filter(o => o.status === OrderStatus.PENDING).length > 0 && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-bold">({orders.filter(o => o.status === OrderStatus.PENDING).length})P</span>}</h2>
               </div>
 
               {orders.length === 0 ? (
@@ -926,8 +1247,24 @@ const AdminDashboard: React.FC = () => {
                     <div key={order.id} className="p-4">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">{order.id}</p>
-                          <p className="text-xs text-gray-500">{new Date(order.date).toLocaleDateString()}</p>
+                          <p className="font-bold text-gray-900 text-sm">{order.id}{order.status === OrderStatus.PENDING && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full font-bold">PENDING</span>}</p>
+                          <p className="text-xs text-gray-500">
+                            {(() => {
+                              try {
+                                if (!order.date) return 'Unknown Date';
+                                if (typeof order.date === 'string' || typeof order.date === 'number') {
+                                  const d = new Date(order.date);
+                                  return isNaN(d.getTime()) ? 'Unknown Date' : d.toLocaleDateString();
+                                }
+                                if ((order.date as any).toDate) {
+                                  return (order.date as any).toDate().toLocaleDateString();
+                                }
+                                return 'Unknown Date';
+                              } catch {
+                                return 'Unknown Date';
+                              }
+                            })()}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-gray-900">₹{order.total}</p>
@@ -935,22 +1272,22 @@ const AdminDashboard: React.FC = () => {
                             value={order.status}
                             onChange={async (e) => {
                               const newStatus = e.target.value as OrderStatus;
-                              if (newStatus === OrderStatus.SHIPPED && order.status !== OrderStatus.SHIPPED) {
-                                const confirmShipped = window.confirm(
-                                  "Marking as Shipped will reduce stock for these items. Continue?"
+                              if (newStatus === OrderStatus.CONFIRMED && order.status === OrderStatus.PENDING) {
+                                const confirmStock = window.confirm(
+                                  "Confirming the order will reduce stock for these items. Continue?"
                                 );
-                                if (!confirmShipped) return;
+                                if (!confirmStock) return;
 
                                 try {
                                   await reduceStock(order);
-                                  showToast('Stock reduced & Order marked Shipped', 'success');
+                                  showToast('Stock reduced & Order Confirmed', 'success');
                                 } catch (error) {
                                   showToast('Failed to reduce stock. Order status NOT updated.', 'error');
                                   return; // Stop update if stock reduction fails
                                 }
                               }
                               updateOrderStatus(order.id, newStatus);
-                              if (newStatus !== OrderStatus.SHIPPED) {
+                              if (newStatus !== OrderStatus.CONFIRMED) {
                                 showToast('Order status updated', 'success');
                               }
                             }}
@@ -970,10 +1307,10 @@ const AdminDashboard: React.FC = () => {
                       <div className="bg-gray-50 rounded-lg p-3 mb-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs font-semibold text-gray-500 mb-2">Customer Details</p>
-                          <p className="text-sm font-medium text-gray-900">{order.customer.name}</p>
-                          <p className="text-xs text-gray-600">{order.customer.email}</p>
-                          <p className="text-xs text-gray-600">{order.customer.phone}</p>
-                          {order.customer.instagramId && (
+                          <p className="text-sm font-medium text-gray-900">{order.customer?.name || 'N/A'}</p>
+                          <p className="text-xs text-gray-600">{order.customer?.email || 'N/A'}</p>
+                          <p className="text-xs text-gray-600">{order.customer?.phone || 'N/A'}</p>
+                          {order.customer?.instagramId && (
                             <p className="text-xs text-purple-600 font-medium mt-1">
                               IG: {order.customer.instagramId}
                             </p>
@@ -981,8 +1318,8 @@ const AdminDashboard: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-gray-500 mb-2">Shipping Address</p>
-                          <p className="text-xs text-gray-600">{order.customer.address}</p>
-                          <p className="text-xs text-gray-600">Pincode: {order.customer.pincode}</p>
+                          <p className="text-xs text-gray-600">{order.customer?.address || 'N/A'}</p>
+                          <p className="text-xs text-gray-600">Pincode: {order.customer?.pincode || 'N/A'}</p>
                           <div className="mt-2">
                             <span className="text-xs font-semibold text-gray-500">Payment: </span>
                             <span className="text-xs font-bold text-gray-900 uppercase">{order.paymentMethod || 'N/A'}</span>
@@ -991,7 +1328,7 @@ const AdminDashboard: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        {order.items.map((item, idx) => (
+                        {order.items?.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-sm">
                             <span className="text-gray-600">{item.name} | Size: {item.selectedSize} | Color: {item.selectedColor} × {item.quantity}</span>
                             <span className="font-medium text-gray-900">₹{(item.salePrice || item.price) * item.quantity}</span>
@@ -1033,14 +1370,20 @@ const AdminDashboard: React.FC = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setConfigForm(prev => ({ ...prev, heroBannerImage: reader.result as string }));
-                              };
-                              reader.readAsDataURL(file);
+                              try {
+                                const options = { maxSizeMB: 0.2, maxWidthOrHeight: 1080, useWebWorker: true };
+                                const compressedFile = await imageCompression(file, options);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setConfigForm(prev => ({ ...prev, heroBannerImage: reader.result as string }));
+                                };
+                                reader.readAsDataURL(compressedFile);
+                              } catch (error) {
+                                console.error("Error compressing hero image:", error);
+                              }
                             }
                           }}
                           className="hidden"
@@ -1055,6 +1398,11 @@ const AdminDashboard: React.FC = () => {
                         </button>
                       )}
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Hero Title</label>
+                    <input type="text" value={configForm.heroTitle || ''} onChange={(e) => setConfigForm(prev => ({ ...prev, heroTitle: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" placeholder="THE SEASON EDIT" />
                   </div>
 
                   <div>
@@ -1103,6 +1451,8 @@ const AdminDashboard: React.FC = () => {
 
                       try {
                         showToast('Uploading story...', 'info');
+                        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1080, useWebWorker: true };
+                        const compressedFile = await imageCompression(file, options);
                         const reader = new FileReader();
                         reader.onloadend = async () => {
                           const base64 = reader.result as string;
@@ -1117,7 +1467,7 @@ const AdminDashboard: React.FC = () => {
                           showToast('Story added!', 'success');
                           form.reset();
                         };
-                        reader.readAsDataURL(file);
+                        reader.readAsDataURL(compressedFile);
                       } catch (error) {
                         console.error(error);
                         showToast('Failed to add story', 'error');
@@ -1199,14 +1549,20 @@ const AdminDashboard: React.FC = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setConfigForm(prev => ({ ...prev, aboutImage: reader.result as string }));
-                              };
-                              reader.readAsDataURL(file);
+                              try {
+                                const options = { maxSizeMB: 0.1, maxWidthOrHeight: 800, useWebWorker: true };
+                                const compressedFile = await imageCompression(file, options);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setConfigForm(prev => ({ ...prev, aboutImage: reader.result as string }));
+                                };
+                                reader.readAsDataURL(compressedFile);
+                              } catch (error) {
+                                console.error("Compression failed", error);
+                              }
                             }
                           }}
                           className="hidden"
@@ -1380,6 +1736,16 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'giveaway' && (
+          <GiveawayManager
+            entries={giveawayEntries}
+            onDelete={deleteGiveawayEntry}
+            showToast={showToast}
+            giveawayEnabled={giveawayEnabled}
+            setGiveawayEnabled={setGiveawayEnabled}
+          />
         )}
       </div>
 
