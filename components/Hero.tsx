@@ -6,54 +6,37 @@ const Hero: React.FC = () => {
   const { siteConfig } = useShop();
 
   return (
-    <section className="relative h-[80dvh] md:h-screen w-full flex items-center justify-center overflow-hidden bg-black px-4">
+    <section className="relative h-[100dvh] w-full flex flex-col justify-end overflow-hidden pb-16 md:pb-24">
+      {}
       <div className="absolute inset-0 z-0">
-        {siteConfig.heroBannerImage ? (
-          <img
-            src={siteConfig.heroBannerImage}
-            alt="Hero Background"
-            className="w-full h-full object-cover opacity-60"
+        {siteConfig.heroBannerImage && (
+          <img 
+            src={siteConfig.heroBannerImage} 
+            alt="Premium Streetwear Collection" 
+            className="w-full h-full object-cover object-center"
           />
-        ) : (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover opacity-60 grayscale"
-          >
-            <source src="https://player.vimeo.com/external/370331493.sd.mp4?s=27d04e137b2d58546b9a89c922a6132717a66e4a&profile_id=164&oauth2_token_id=57447761" type="video/mp4" />
-          </video>
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black"></div>
+        {}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
       </div>
 
-      <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center justify-center text-center">
-
-        <div className="flex flex-col items-center gap-2 md:gap-4 animate-fade-in">
-          <img
-            src="/hero-logo.png"
-            alt="The 3"
-            className="w-32 md:w-56 object-contain opacity-90 drop-shadow-2xl"
-          />
-
-          <p className="text-sm md:text-xl uppercase tracking-[0.4em] font-light text-neutral-200 drop-shadow-md px-2">
-            {siteConfig.heroSubtitle || 'Evolution of the Street Soul'}
+      <div className="relative z-10 w-full flex flex-col items-center text-center px-6">
+        
+        <div className="animate-slide-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
+          <h2 className="text-white text-3xl md:text-6xl font-display font-black uppercase tracking-widest mb-4 drop-shadow-sm">
+            {siteConfig.heroTitle || 'The Season Edit'}
+          </h2>
+          <p className="text-white/90 font-serif italic text-lg md:text-2xl mb-8 drop-shadow-sm">
+            {siteConfig.heroSubtitle || 'Refined pieces for the modern nomad.'}
           </p>
         </div>
 
-        <div className="flex flex-col md:flex-row w-full max-w-xs md:max-w-none gap-4 mt-8 md:mt-10 justify-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="animate-slide-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <Link
             to="/shop"
-            className="w-full md:w-auto bg-white text-black py-4 px-10 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all text-center whitespace-nowrap shadow-lg"
+            className="inline-block bg-white text-black py-4 px-12 text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors"
           >
             {siteConfig.heroButtonText || 'Shop Collection'}
-          </Link>
-          <Link
-            to={siteConfig.storyButtonLink || '/about'}
-            className="w-full md:w-auto border border-white/40 text-white py-4 px-10 text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-white/10 transition-all text-center whitespace-nowrap shadow-lg"
-          >
-            {siteConfig.storyButtonText || 'Our Story'}
           </Link>
         </div>
       </div>

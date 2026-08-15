@@ -25,3 +25,17 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+
+# AI tooling junk
+.agents/
+.gemini/
+.kiro/
+deno.lock
+skills-lock.json
+strip_comments.js
+tsconfig.tsbuildinfo
+*.png
+*.jpg
+*.jpeg
+*.webp
+!public/logo.png

@@ -11,6 +11,7 @@ import {
     getDocs,
     updateDoc
 } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Product, Order, CategoryWithImage, SiteConfig, Review } from './types';
 
 const firebaseConfig = {
@@ -25,19 +26,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
 
-const CLOUDINARY_CLOUD_NAME = 'qyxgcufu';
-const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
-
 export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
-    if (imageUrl.includes('cloudinary.com')) {
+    if (imageUrl.includes('firebasestorage.googleapis.com')) {
         return imageUrl;
     }
 
     try {
-        console.log('[Cloudinary] Fetching image from URL...');
+        console.log('[Storage] Fetching image from URL...');
 
         const response = await fetch(imageUrl);
         const blob = await response.blob();
@@ -58,47 +57,7 @@ export const uploadImageFromUrl = async (imageUrl: string): Promise<string> => {
         });
     } catch (error: any) {
         const msg = error?.message || String(error);
-        console.error('[Cloudinary] Migration failed:', msg);
-    }
-};
-
-export const migrateImage = async (oldUrl: string): Promise<string> => {
-    // Only migrate if it's from the OLD Cloudinary account
-    if (!oldUrl.includes('res.cloudinary.com/dnn0km7fu')) {
-        return oldUrl;
-    }
-
-    try {
-        console.log('[Migration] Migrating image:', oldUrl);
-
-        // DIRECT UPLOAD via Cloudinary (they handle the fetch)
-        // This avoids CORS issues in the browser
-        const formData = new FormData();
-        formData.append('file', oldUrl);
-        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-        const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-            {
-                method: 'POST',
-                body: formData
-            }
-        );
-
-        const data = await response.json();
-
-        if (data.secure_url) {
-            const optimizedUrl = data.secure_url.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
-            console.log('[Migration] Success:', optimizedUrl);
-            return optimizedUrl;
-        } else {
-            const errorMsg = data.error?.message || 'Unknown Cloudinary error';
-            throw new Error(errorMsg);
-        }
-
-    } catch (error: any) {
-        console.error('[Migration] Failed for:', oldUrl, error);
-        throw error; // Re-throw to be caught by UI
+        console.error('[Storage] Migration failed:', msg);
     }
 };
 
@@ -108,31 +67,20 @@ export const uploadImage = async (base64Data: string, _path?: string): Promise<s
     }
 
     try {
-        console.log('[Cloudinary] Uploading image...');
+        console.log('[Storage] Uploading image...');
 
-        const formData = new FormData();
-        formData.append('file', base64Data);
-        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        const mime = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
+        const ext = mime.split('/')[1] || 'jpg';
+        const cleanBase64 = base64Data.split(',')[1];
+        const path = _path || `products/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const storageRef = ref(storage, path);
 
-        const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-            {
-                method: 'POST',
-                body: formData
-            }
-        );
-
-        const data = await response.json();
-
-        if (data.secure_url) {
-            const optimizedUrl = data.secure_url.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
-            console.log('[Cloudinary] Upload success:', optimizedUrl);
-            return optimizedUrl;
-        } else {
-            throw new Error(data.error?.message || 'Upload failed');
-        }
+        await uploadString(storageRef, cleanBase64, 'base64', { contentType: mime });
+        const url = await getDownloadURL(storageRef);
+        console.log('[Storage] Upload success:', url);
+        return url;
     } catch (error: any) {
-        console.error('[Cloudinary] Upload failed:', error?.message || error);
+        console.error('[Storage] Upload failed:', error?.message || error);
         throw error;
     }
 };
@@ -146,42 +94,21 @@ export const uploadImages = async (base64Images: string[], _folder?: string, _it
     return urls;
 };
 
-export const getCloudinaryPublicId = (url: string): string | null => {
-    if (!url || !url.includes('cloudinary.com')) return null;
-    // Extract public_id from URL: .../upload/v12345/folder/id.jpg -> folder/id
-    const parts = url.split('/upload/');
-    if (parts.length < 2) return null;
+export const deleteImage = async (url: string) => {
+    if (!url) return;
 
-    // Remove version (v12345) and extension (.jpg)
-    const path = parts[1].split('/').slice(1).join('/'); // Skip everything before the first actual path part after /upload/
-    const pathWithoutExtension = path.split('.')[0];
-
-    // If there's a version number like v1234567, we need to handle it.
-    // Actually, Cloudinary URLs usually look like: /upload/v1234/public_id.jpg
-    // Let's try a more robust approach:
-    const regex = /\/upload\/(?:v\d+\/)?(.+?)\.[a-z]+$/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-};
-
-export const deleteCloudinaryImage = async (url: string) => {
-    const publicId = getCloudinaryPublicId(url);
-    if (!publicId) return;
-
-    try {
-        console.log('[Cloudinary] Triggering deletion for:', publicId);
-        const response = await fetch('/.netlify/functions/delete-image', {
-            method: 'POST',
-            body: JSON.stringify({ public_id: publicId }),
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to delete image');
-        console.log('[Cloudinary] Successfully deleted:', publicId);
-    } catch (error) {
-        console.error('[Cloudinary] Deletion error:', error);
+    if (url.includes('firebasestorage.googleapis.com')) {
+        try {
+            const storageRef = ref(storage, url);
+            await deleteObject(storageRef);
+            console.log('[Storage] Deleted:', url);
+        } catch (error) {
+            console.error('[Storage] Delete error:', error);
+        }
+        return;
     }
+
+    console.warn('[Storage] Not a Storage URL, skipping:', url);
 };
 
 export const productsCollection = collection(db, 'products');
@@ -302,6 +229,83 @@ export const saveSiteConfig = async (config: SiteConfig) => {
     } catch (error) {
         console.error('[Firebase] Error saving site config:', error);
         throw error;
+    }
+};
+
+export const getProductsOnce = async (): Promise<Product[]> => {
+    try {
+        const snapshot = await getDocs(productsCollection);
+        const products = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
+        products.sort((a, b) => {
+            let timeA = Number(a.createdAt) || 0;
+            let timeB = Number(b.createdAt) || 0;
+            if (isNaN(timeA)) timeA = 0;
+            if (isNaN(timeB)) timeB = 0;
+            if (timeA !== timeB) return timeB - timeA;
+            return b.id.localeCompare(a.id);
+        });
+        console.log('[Firebase] Products fetched:', products.length);
+        return products;
+    } catch (error) {
+        console.error('[Firebase] Error fetching products:', error);
+        return [];
+    }
+};
+
+export const getCategoriesOnce = async (): Promise<CategoryWithImage[]> => {
+    try {
+        const snapshot = await getDocs(categoriesCollection);
+        const categories = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as CategoryWithImage & { id: string }));
+        console.log('[Firebase] Categories fetched:', categories.length);
+        return categories;
+    } catch (error) {
+        console.error('[Firebase] Error fetching categories:', error);
+        return [];
+    }
+};
+
+export const getStoriesOnce = async (): Promise<import('./types').Story[]> => {
+    try {
+        const snapshot = await getDocs(storiesCollection);
+        const stories = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as import('./types').Story));
+        stories.sort((a, b) => b.createdAt - a.createdAt);
+        return stories;
+    } catch (error) {
+        console.error('[Firebase] Error fetching stories:', error);
+        return [];
+    }
+};
+
+export const getSiteConfigOnce = async (): Promise<SiteConfig | null> => {
+    try {
+        const { getDoc } = await import('firebase/firestore');
+        const snapshot = await getDoc(siteConfigDoc);
+        return snapshot.exists() ? snapshot.data() as SiteConfig : null;
+    } catch (error) {
+        console.error('[Firebase] Error fetching site config:', error);
+        return null;
+    }
+};
+
+export const getProductTypesOnce = async (): Promise<string[]> => {
+    try {
+        const { getDoc } = await import('firebase/firestore');
+        const snapshot = await getDoc(productTypesDoc);
+        return snapshot.exists() ? (snapshot.data()?.types || []) : [];
+    } catch (error) {
+        console.error('[Firebase] Error fetching product types:', error);
+        return [];
+    }
+};
+
+export const getGiveawayConfigOnce = async (): Promise<boolean> => {
+    try {
+        const { getDoc } = await import('firebase/firestore');
+        const snapshot = await getDoc(giveawayConfigDoc);
+        return snapshot.exists() ? snapshot.data()?.enabled === true : false;
+    } catch (error) {
+        console.error('[Firebase] Error fetching giveaway config:', error);
+        return false;
     }
 };
 

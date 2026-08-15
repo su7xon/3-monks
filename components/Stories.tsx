@@ -39,7 +39,7 @@ const Stories: React.FC = () => {
                 </div>
             </section>
 
-            {/* Story Lightbox */}
+            {}
             {selectedStory && (
                 <div
                     className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in"

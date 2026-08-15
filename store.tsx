@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story, Review } from './types';
+import { useLocation } from 'react-router-dom';
+import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story, Review, GiveawayEntry } from './types';
 import {
   saveProduct,
   deleteProduct,
@@ -8,10 +9,8 @@ import {
   saveCategory,
   deleteCategory,
   saveSiteConfig,
-  subscribeToProducts,
   subscribeToOrders,
-  subscribeToCategories,
-  subscribeToSiteConfig,
+  subscribeToGiveawayEntries,
   subscribeToProductTypes,
   saveProductTypes as saveProductTypesToFirebase,
   uploadImage,
@@ -19,7 +18,15 @@ import {
   deleteOrder as deleteOrderFromFirebase,
   saveStory,
   deleteStory,
-  subscribeToStories
+  getProductsOnce,
+  getCategoriesOnce,
+  getStoriesOnce,
+  getSiteConfigOnce,
+  getProductTypesOnce,
+  getGiveawayConfigOnce,
+  saveGiveawayEntry,
+  deleteGiveawayEntry as deleteGiveawayEntryFromFirebase,
+  saveGiveawayConfig
 } from './firebase';
 
 interface CategoryWithId extends CategoryWithImage {
@@ -78,6 +85,11 @@ interface ShopContextType {
   getApprovedReviews: () => Promise<Review[]>;
   updateReviewStatus: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>;
   deleteReview: (reviewId: string) => Promise<void>;
+  giveawayEntries: GiveawayEntry[];
+  addGiveawayEntry: (entry: GiveawayEntry) => Promise<void>;
+  deleteGiveawayEntry: (entryId: string) => Promise<void>;
+  giveawayEnabled: boolean;
+  setGiveawayEnabled: (enabled: boolean) => Promise<void>;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -89,72 +101,172 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [siteConfig, setSiteConfigState] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [productTypes, setProductTypesState] = useState<string[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('iii_monks_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [giveawayEntries, setGiveawayEntries] = useState<GiveawayEntry[]>([]);
+  const [giveawayEnabled, setGiveawayEnabledState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('iii_monks_cart', JSON.stringify(cart));
+    } catch {  }
+  }, [cart]);
+
   const hasLoadedCategories = useRef(false);
   const hasLoadedConfig = useRef(false);
+  const { pathname } = useLocation();
+  const isAdmin = pathname.startsWith('/admin');
+
+  const readCache = useCallback((key: string) => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+
+  const writeCache = useCallback((key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+    } catch {  }
+  }, []);
+
+  const isCacheFresh = useCallback((entry: any, ttlMs: number) => {
+    return !!entry && typeof entry.ts === 'number' && Date.now() - entry.ts < ttlMs;
+  }, []);
+
+  const loadWithCache = useCallback(async (cacheKey: string, ttlMs: number, fetcher: () => Promise<any[]>, setter: (d: any) => void, ttlAdminMs?: number) => {
+    const ttl = isAdmin && ttlAdminMs ? ttlAdminMs : ttlMs;
+    const cached = readCache(cacheKey);
+    if (isCacheFresh(cached, ttl)) {
+      setter(cached.data);
+    }
+    try {
+      const data = await fetcher();
+      writeCache(cacheKey, data);
+      setter(data);
+      return data;
+    } catch (error) {
+      console.error('[Store] Fetch failed for', cacheKey, error);
+      return null;
+    }
+  }, [isAdmin, readCache, writeCache, isCacheFresh]);
 
   useEffect(() => {
-    console.log('[Store] Setting up Firestore subscriptions...');
+    console.log('[Store] Setting up data load...', isAdmin ? '(admin mode)' : '(public mode)');
+    let cancelled = false;
 
-    const unsubProducts = subscribeToProducts((data) => {
-      console.log('[Store] Products received:', data.length);
-      setProductsState(data);
+    const PRODUCT_TTL = 10 * 60 * 1000;
+    const PRODUCT_TTL_ADMIN = 30 * 1000;
+    const CACHE_TTL = 10 * 60 * 1000;
+
+    const cachedProducts = readCache('iii_monks_products');
+    if (isCacheFresh(cachedProducts, isAdmin ? PRODUCT_TTL_ADMIN : PRODUCT_TTL)) {
+      setProductsState(cachedProducts.data);
       setIsLoading(false);
-    });
+    }
 
-    const unsubOrders = subscribeToOrders((data) => {
-      console.log('[Store] Orders received:', data.length);
-      setOrders(data);
-    });
+    (async () => {
+      const data = await getProductsOnce();
+      if (cancelled) return;
+      if (data.length > 0) {
+        writeCache('iii_monks_products', data);
+        setProductsState(data);
+      }
+      setIsLoading(false);
+    })();
 
-    const unsubCategories = subscribeToCategories((data) => {
-      console.log('[Store] Categories received from Firestore:', data.length, data);
+    (async () => {
+      const data = await getCategoriesOnce();
+      if (cancelled) return;
       hasLoadedCategories.current = true;
       setCategoriesLoaded(true);
       if (data.length > 0) {
-
         const categoriesWithIds = data.map((cat: any) => ({
           id: cat.id || `cat_${Date.now()}_${Math.random()}`,
           name: cat.name,
           image: cat.image
         }));
+        writeCache('iii_monks_categories', categoriesWithIds);
         setCategoriesState(categoriesWithIds);
       } else {
-
-        setCategoriesState(DEFAULT_CATEGORIES);
+        const cachedCats = readCache('iii_monks_categories');
+        if (!isCacheFresh(cachedCats, CACHE_TTL)) {
+          setCategoriesState(DEFAULT_CATEGORIES);
+        }
       }
-    });
+    })();
 
-    const unsubConfig = subscribeToSiteConfig((data) => {
-      console.log('[Store] Site config received:', !!data);
+    (async () => {
+      const data = await getSiteConfigOnce();
+      if (cancelled) return;
       hasLoadedConfig.current = true;
       if (data) {
+        writeCache('iii_monks_siteconfig', data);
         setSiteConfigState(data);
       }
-    });
+    })();
 
-    const unsubProductTypes = subscribeToProductTypes((data) => {
-      console.log('[Store] Product types received:', data);
-      setProductTypesState(data);
-    });
+    (async () => {
+      const data = await getStoriesOnce();
+      if (cancelled) return;
+      if (data.length > 0) {
+        writeCache('iii_monks_stories', data);
+        setStories(data);
+      }
+    })();
 
-    const unsubStories = subscribeToStories((data) => {
-      console.log('[Store] Stories received:', data.length);
-      setStories(data);
-    });
+    (async () => {
+      const data = await getProductTypesOnce();
+      if (cancelled) return;
+      if (data.length > 0) {
+        writeCache('iii_monks_producttypes', data);
+        setProductTypesState(data);
+      }
+    })();
+
+    (async () => {
+      const data = await getGiveawayConfigOnce();
+      if (cancelled) return;
+      setGiveawayEnabledState(data);
+    })();
+
+    const unsubs: (() => void)[] = [];
+
+    if (isAdmin) {
+      unsubs.push(subscribeToOrders((data) => {
+        console.log('[Store] Orders received:', data.length);
+        setOrders(data);
+      }));
+      unsubs.push(subscribeToGiveawayEntries((data) => {
+        console.log('[Store] Giveaway entries received:', data.length);
+        setGiveawayEntries(data);
+      }));
+    }
+
+    const cachedCategories = readCache('iii_monks_categories');
+    if (isCacheFresh(cachedCategories, CACHE_TTL) && cachedCategories.data.length > 0) {
+      setCategoriesState(cachedCategories.data);
+    }
+    const cachedConfig = readCache('iii_monks_siteconfig');
+    if (isCacheFresh(cachedConfig, CACHE_TTL)) {
+      setSiteConfigState(cachedConfig.data);
+    }
+    const cachedStories = readCache('iii_monks_stories');
+    if (isCacheFresh(cachedStories, CACHE_TTL)) {
+      setStories(cachedStories.data);
+    }
 
     return () => {
-      unsubProducts();
-      unsubOrders();
-      unsubCategories();
-      unsubConfig();
-      unsubProductTypes();
-      unsubStories();
+      cancelled = true;
+      unsubs.forEach(u => u());
     };
-  }, []);
+  }, [isAdmin]);
 
   const addProduct = useCallback(async (product: Product) => {
     console.log('[Store] Adding product:', product.id);
@@ -268,10 +380,33 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addToCart = useCallback((item: CartItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor);
-      if (existing) {
-        return prev.map(i => i === existing ? { ...i, quantity: i.quantity + item.quantity } : i);
+      
+      let maxStock = item.stock || 0;
+      const colorKey = item.selectedColor || 'Standard';
+      if (item.variantStock) {
+          const variantKey = `${colorKey}_${item.selectedSize}`;
+          if (item.variantStock[variantKey] !== undefined) maxStock = item.variantStock[variantKey];
+          else if (item.variantStock[item.selectedSize] !== undefined) maxStock = item.variantStock[item.selectedSize];
+          else if (item.variantStock[`_${item.selectedSize}`] !== undefined) maxStock = item.variantStock[`_${item.selectedSize}`];
+      } else if (item.colorStock && item.colorStock[item.selectedColor] !== undefined) {
+          maxStock = item.colorStock[item.selectedColor];
       }
-      return [...prev, item];
+
+      if (existing) {
+        const newQuantity = Math.min(existing.quantity + item.quantity, maxStock);
+        if (newQuantity === existing.quantity) {
+          alert(`You cannot add more of this item. Only ${maxStock} left in stock.`);
+          return prev;
+        }
+        return prev.map(i => i === existing ? { ...i, quantity: newQuantity } : i);
+      }
+      
+      const addedQuantity = Math.min(item.quantity, maxStock);
+      if (addedQuantity <= 0) {
+        alert('This item is currently out of stock.');
+        return prev;
+      }
+      return [...prev, { ...item, quantity: addedQuantity }];
     });
   }, []);
 
@@ -284,7 +419,26 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCart(prev => prev.filter(item => !(item.id === id && item.selectedSize === size && item.selectedColor === color)));
       return;
     }
-    setCart(prev => prev.map(item => (item.id === id && item.selectedSize === size && item.selectedColor === color) ? { ...item, quantity } : item));
+    setCart(prev => prev.map(item => {
+      if (item.id === id && item.selectedSize === size && item.selectedColor === color) {
+        let maxStock = item.stock || 0;
+        const colorKey = color || 'Standard';
+        if (item.variantStock) {
+            const variantKey = `${colorKey}_${size}`;
+            if (item.variantStock[variantKey] !== undefined) maxStock = item.variantStock[variantKey];
+            else if (item.variantStock[size] !== undefined) maxStock = item.variantStock[size];
+            else if (item.variantStock[`_${size}`] !== undefined) maxStock = item.variantStock[`_${size}`];
+        } else if (item.colorStock && item.colorStock[color] !== undefined) {
+            maxStock = item.colorStock[color];
+        }
+        const newQuantity = Math.min(quantity, maxStock);
+        if (quantity > maxStock) {
+          alert(`Only ${maxStock} left in stock.`);
+        }
+        return { ...item, quantity: newQuantity };
+      }
+      return item;
+    }));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -391,6 +545,33 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const addGiveawayEntry = useCallback(async (entry: GiveawayEntry) => {
+    try {
+      await saveGiveawayEntry(entry);
+    } catch (error) {
+      console.error('[Store] Error adding giveaway entry:', error);
+      throw error;
+    }
+  }, []);
+
+  const deleteGiveawayEntry = useCallback(async (entryId: string) => {
+    try {
+      await deleteGiveawayEntryFromFirebase(entryId);
+    } catch (error) {
+      console.error('[Store] Error deleting giveaway entry:', error);
+      throw error;
+    }
+  }, []);
+
+  const setGiveawayEnabled = useCallback(async (enabled: boolean) => {
+    try {
+      await saveGiveawayConfig(enabled);
+    } catch (error) {
+      console.error('[Store] Error saving giveaway config:', error);
+      throw error;
+    }
+  }, []);
+
   return (
     <ShopContext.Provider value={{
       products,
@@ -424,7 +605,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getAllReviews,
       getApprovedReviews,
       updateReviewStatus,
-      deleteReview
+      deleteReview,
+      giveawayEntries,
+      addGiveawayEntry,
+      deleteGiveawayEntry,
+      giveawayEnabled,
+      setGiveawayEnabled
     }}>
       {children}
     </ShopContext.Provider>

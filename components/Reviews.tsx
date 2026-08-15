@@ -12,7 +12,7 @@ export const ReviewsList: React.FC<{ productId: string }> = ({ productId }) => {
     }, [productId, getProductReviews]);
 
     if (reviews.length === 0) {
-        return <p className="text-gray-500 italic">No reviews yet. Be the first to write one!</p>;
+        return <p className="text-gray-500 italic text-sm text-center py-4">No reviews yet. Be the first to write one!</p>;
     }
 
     return (

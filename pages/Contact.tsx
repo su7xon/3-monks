@@ -24,7 +24,7 @@ const Contact: React.FC = () => {
                   <h3 className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold text-gray-400 mb-2 md:mb-4">Contact</h3>
                   <p className="text-xs md:text-sm font-light leading-relaxed text-gray-500">
                     info@the3monks.in<br />
-                    +91 9045848613<br />
+                    +91 7451861370<br />
                     Daily: 10AM - 9PM
                   </p>
                 </div>
@@ -53,7 +53,7 @@ const Contact: React.FC = () => {
                 </div>
               </a>
 
-              <a href="tel:+919045848613" className="relative w-full bg-[#111827] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
+              <a href="tel:+917451861370" className="relative w-full bg-[#111827] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/10 rounded-full backdrop-blur-sm">

@@ -64,7 +64,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, isOpen,
             className="fixed inset-0 z-[100] bg-black animate-fade-in flex flex-col justify-center max-h-screen"
             onClick={onClose}
         >
-            {/* Top Bar */}
+            {}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/50 to-transparent">
                 <span className="text-white text-xs font-bold tracking-widest">{currentIndex + 1} / {images.length}</span>
                 <button onClick={onClose} className="text-white p-2 hover:bg-white/10 rounded-full">
@@ -74,7 +74,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, isOpen,
                 </button>
             </div>
 
-            {/* Main Image Area */}
+            {}
             <div
                 className="flex-1 relative flex items-center justify-center overflow-hidden"
                 onTouchStart={handleTouchStart}
@@ -88,7 +88,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, isOpen,
                     onClick={handleZoom}
                 />
 
-                {/* Navigation Buttons (Desktop) */}
+                {}
                 <button
                     onClick={handlePrev}
                     className="hidden md:block absolute left-4 text-white hover:bg-white/10 p-2 rounded-full transition-colors"
@@ -107,7 +107,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ images, initialIndex, isOpen,
                 </button>
             </div>
 
-            {/* Thumbnails */}
+            {}
             <div className="p-4 flex gap-2 overflow-x-auto justify-center z-20 bg-gradient-to-t from-black/50 to-transparent" onClick={(e) => e.stopPropagation()}>
                 {images.map((img, idx) => (
                     <button

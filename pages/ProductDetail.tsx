@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useShop } from '../store';
@@ -6,6 +5,7 @@ import { Product } from '../types';
 import { useToast } from '../components/Toast';
 import ImageViewer from '../components/ImageViewer';
 import { ReviewsList, ReviewForm } from '../components/Reviews';
+import ProductCard from '../components/ProductCard';
 
 const ProductDetail: React.FC = () => {
   const { slug } = useParams();
@@ -18,6 +18,7 @@ const ProductDetail: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [currentVariantStock, setCurrentVariantStock] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showSeeMore, setShowSeeMore] = useState(false);
@@ -48,7 +49,7 @@ const ProductDetail: React.FC = () => {
   const getStockForVariant = (size: string, color: string): number => {
     if (!product) return 0;
 
-    // If no specific variant tracking is set up at all, use total stock
+    
     if (!product.variantStock || Object.keys(product.variantStock).length === 0) {
       return product.stock;
     }
@@ -56,13 +57,13 @@ const ProductDetail: React.FC = () => {
     const colorKey = color || 'Standard';
     const variantKey = `${colorKey}_${size}`;
 
-    // 1. Try exact match (e.g. "Standard_S")
+    
     if (product.variantStock[variantKey] !== undefined) return product.variantStock[variantKey];
 
-    // 2. Try size-only match (e.g. "S")
+    
     if (product.variantStock[size] !== undefined) return product.variantStock[size];
 
-    // 3. Try underscore-prefixed match (e.g. "_S")
+    
     if (product.variantStock[`_${size}`] !== undefined) return product.variantStock[`_${size}`];
 
     return 0;
@@ -78,7 +79,8 @@ const ProductDetail: React.FC = () => {
       setIsExpanded(false);
       const initialColor = p.colors?.[0] || '';
       setSelectedColor(initialColor);
-      setCurrentVariantStock(p.stock); // Initially show total stock
+      setCurrentVariantStock(p.stock); 
+      window.scrollTo(0, 0);
     } else {
       navigate('/shop');
     }
@@ -100,7 +102,7 @@ const ProductDetail: React.FC = () => {
       if (isTruncated) {
         setShowSeeMore(true);
       } else if (!isExpanded) {
-        // Only hide if not currently expanded, to avoid button flickering
+        
         setShowSeeMore(false);
       }
     }
@@ -170,6 +172,11 @@ const ProductDetail: React.FC = () => {
       </div>
     );
   }
+
+  let similarProducts = [...products]
+    .filter(p => p.id !== product.id)
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 4);
 
   return (
     <div className="pt-20 md:pt-24 pb-10 md:pb-16 bg-white min-h-screen text-gray-900">
@@ -282,7 +289,17 @@ const ProductDetail: React.FC = () => {
               )}
 
               <div>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2 md:mb-4 block">Select Size</span>
+                <div className="flex justify-between items-center mb-2 md:mb-4">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 block">Select Size</span>
+                  {product.sizeGuide && (
+                    <button 
+                      onClick={() => setIsSizeGuideOpen(true)}
+                      className="text-[10px] uppercase tracking-[0.2em] text-gray-900 border-b border-gray-900 hover:text-gray-600 transition-colors"
+                    >
+                      Size Guide
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2 md:gap-4">
                   {product.sizes.map(size => {
                     const sizeStock = getStockForVariant(size, selectedColor);
@@ -360,6 +377,16 @@ const ProductDetail: React.FC = () => {
         </div>
       </div>
 
+      {similarProducts.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 md:px-6 mt-16 md:mt-24 border-t border-gray-100 pt-12 md:pt-16 mb-20 md:mb-0">
+          <h2 className="text-2xl font-oswald font-bold uppercase tracking-tighter mb-8 text-center md:text-left">You May Also Like</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+            {similarProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-8 md:hidden z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
         <div className="flex justify-end mb-2">
@@ -399,7 +426,51 @@ const ProductDetail: React.FC = () => {
         isOpen={isViewerOpen}
         onClose={() => setIsViewerOpen(false)}
       />
-    </div >
+
+      {}
+      {isSizeGuideOpen && product.sizeGuide && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#111] border border-gray-800 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl relative">
+            <div className="p-4 md:p-6 border-b border-gray-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-white font-display font-black tracking-widest text-xl uppercase">Size Guide</h3>
+                <p className="text-gray-400 text-xs mt-1">Measurements in {product.sizeGuide.unit} (Sizes may vary by +/- 1 inches)</p>
+              </div>
+              <button onClick={() => setIsSizeGuideOpen(false)} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr>
+                    <th className="py-3 px-4 border-b border-gray-800 text-gray-400 font-bold tracking-widest text-xs uppercase bg-black/50">Measurement</th>
+                    {product.sizes.map(size => (
+                      <th key={size} className="py-3 px-4 border-b border-gray-800 text-white font-bold tracking-widest text-xs uppercase text-center bg-black/50">{size}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {product.sizeGuide?.measurements?.map((measurement, mIdx) => (
+                    <tr key={mIdx} className="hover:bg-white/5 transition-colors">
+                      <td className="py-4 px-4 border-b border-gray-800 text-gray-300 font-medium text-sm">{measurement.name}</td>
+                      {product.sizes.map(size => (
+                        <td key={size} className="py-4 px-4 border-b border-gray-800 text-gray-400 text-sm text-center">
+                          {measurement.values[size] || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

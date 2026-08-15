@@ -390,11 +390,17 @@ const Checkout: React.FC = () => {
                 {loading ? 'PROCESSING...' : (paymentMethod === 'cod' ? `PAY ₹${shippingCost} (SHIPPING)` : `PAY ₹${finalTotal}`)}
               </button>
 
+              {paymentMethod === 'cod' && (
+                <p className="mt-3 text-center text-[11px] md:text-xs text-gray-500">
+                  Pay <span className="font-bold text-black">₹{shippingCost}</span> now, pay the rest when your order arrives
+                </p>
+              )}
+
               <div className="mt-6 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-gray-400">
                   By placing this order you agree to our terms
                 </p>
-                {/* No Returns Policy Notice */}
+                {}
                 <div className="mt-8 pt-6 border-t border-gray-200 text-left">
                   <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-5 shadow-sm">
                     <div className="flex justify-between items-center mb-3">
@@ -409,7 +415,7 @@ const Checkout: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-[11px] md:text-xs text-gray-500 leading-relaxed text-left">
-                      All sales are final — <strong className="text-black">no returns</strong>. Exchange is applicable only if a <strong className="text-black">damaged or incorrect product</strong> is received. <Link to="/policy" className="text-black underline underline-offset-2 cursor-pointer hover:text-gray-700 transition-colors">Read full policy</Link>
+                      All sales are final — <strong className="text-black">no returns</strong>. Exchange is applicable only if a <strong className="text-black">damaged or incorrect product</strong> is received. <span className="text-black font-semibold">( SHIPPING FREE WILL NOT BE REFUNDED )</span> <Link to="/policy" className="text-black underline underline-offset-2 cursor-pointer hover:text-gray-700 transition-colors">Read full policy</Link>
                     </p>
                   </div>
                 </div>

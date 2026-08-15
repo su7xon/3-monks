@@ -56,14 +56,18 @@ const EMPTY_FORM: Partial<Product> = {
   isNew: true,
   isFeatured: false,
   isTopPick: false,
-  productType: ''
+  productType: '',
+  tags: []
 };
+
+const DEFAULT_TAGS = ['T-Shirts', 'Denims', 'Shirts', 'Waffles', 'Lower'];
 
 const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onClose, onSave, categories, productTypes }) => {
   const [formData, setFormData] = useState<Partial<Product>>(EMPTY_FORM);
   const [newColor, setNewColor] = useState('');
   const [newColorStock, setNewColorStock] = useState('');
   const [newSize, setNewSize] = useState('');
+  const [newTag, setNewTag] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
 
@@ -74,12 +78,14 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
+        setNewTag('');
       } else if (product) {
 
         setFormData({ ...product, colorStock: product.colorStock || {}, variantStock: product.variantStock || {} });
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
+        setNewTag('');
       }
     }
   }, [isOpen, isNew, product]);
@@ -114,6 +120,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
       isTopPick: formData.isTopPick || false,
       isBestSeller: formData.isBestSeller || false,
       productType: formData.productType || '',
+      tags: formData.tags || [],
       sizeGuide: formData.sizeGuide,
       createdAt: isNew ? Date.now() : product?.createdAt,
     };
@@ -139,7 +146,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         const file = files[i];
         try {
           const options = {
-            maxSizeMB: 0.2, // Compress aggressively to max 200KB
+            maxSizeMB: 0.2, 
             maxWidthOrHeight: 1080,
             useWebWorker: true
           };
@@ -162,10 +169,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     const imageUrl = formData.images?.[idx];
     if (imageUrl) {
       try {
-        const { deleteCloudinaryImage } = await import('../../firebase');
-        await deleteCloudinaryImage(imageUrl);
+        const { deleteImage } = await import('../../firebase');
+        await deleteImage(imageUrl);
       } catch (err) {
-        console.error('Error deleting image from Cloudinary:', err);
+        console.error('Error deleting image:', err);
       }
     }
     setFormData(prev => ({ ...prev, images: prev.images?.filter((_, i) => i !== idx) }));
@@ -520,6 +527,48 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             </div>
           </div>
 
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-gray-500 block">Home Page Sections (Show in these rows)</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {formData.tags?.map((tag, idx) => (
+                <span key={idx} className="inline-flex items-center gap-2 bg-gray-900 text-white px-3 py-1.5 rounded-full text-sm font-medium">
+                  {tag}
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }))} className="text-gray-300 hover:text-white transition-colors">×</button>
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {DEFAULT_TAGS.filter(t => !(formData.tags || []).includes(t)).map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), tag] }))}
+                  className="px-3 py-1.5 border border-gray-200 rounded-full text-sm font-medium text-gray-500 hover:border-gray-900 hover:text-gray-900 transition-colors"
+                >
+                  + {tag}
+                </button>
+              ))}
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const t = newTag.trim();
+                    if (t && !(formData.tags || []).includes(t)) {
+                      setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), t] }));
+                    }
+                    setNewTag('');
+                  }
+                }}
+                placeholder="Custom tag + Enter"
+                className="flex-1 min-w-[140px] border border-gray-200 px-3 py-1.5 rounded-full text-sm outline-none focus:border-gray-900"
+              />
+            </div>
+            <p className="text-[10px] text-gray-400">Products with this tag will show as their own row on the homepage (e.g. T-Shirts, Denims).</p>
+          </div>
+
           <div className="pt-4 border-t border-gray-100">
             <button type="submit" disabled={isSaving} className="w-full px-4 py-4 bg-green-600 text-white text-sm font-bold rounded-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSaving ? (
@@ -571,8 +620,8 @@ const GiveawayManager: React.FC<{
 
     const shuffled = [...entries].sort(() => Math.random() - 0.5);
     let count = 0;
-    const totalSteps = 25 + Math.floor(Math.random() * 20);
-    const interval = 40;
+    const totalSteps = 40 + Math.floor(Math.random() * 15);
+    const interval = 160;
 
     const spin = () => {
       count++;
@@ -585,7 +634,7 @@ const GiveawayManager: React.FC<{
         setTimeout(() => {
           setWinner(finalWinner);
           setIsSpinning(false);
-          showToast(`Winner: ${finalWinner.name}!`, 'success');
+          showToast(`Winner: ${finalWinner.name}${finalWinner.instagram ? ` (@${finalWinner.instagram.replace(/^@/, '')})` : ''}!`, 'success');
         }, 300);
         return;
       }
@@ -605,6 +654,25 @@ const GiveawayManager: React.FC<{
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @keyframes winner-pop {
+          0% { transform: scale(0.2) rotate(-8deg); opacity: 0; }
+          55% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+          75% { transform: scale(0.95) rotate(-1deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes winner-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+          50% { box-shadow: 0 0 0 16px rgba(250, 204, 21, 0); }
+        }
+        @keyframes winner-sparkle {
+          0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+          50% { transform: scale(1.3) rotate(20deg); opacity: 0.6; }
+        }
+        .winner-pop { animation: winner-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .winner-glow { animation: winner-glow 1.4s ease-out infinite; }
+        .winner-sparkle { animation: winner-sparkle 0.9s ease-in-out infinite; display: inline-block; }
+      `}</style>
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
         <div>
           <h3 className="font-bold text-gray-900">Giveaway Status</h3>
@@ -624,9 +692,15 @@ const GiveawayManager: React.FC<{
 
         <div className="w-48 h-48 rounded-full border-4 border-white/20 mx-auto mb-6 flex items-center justify-center bg-white/5 backdrop-blur-sm">
           {winner ? (
-            <div className="text-center animate-pulse">
-              <p className="text-2xl font-black tracking-tight">{winner.name}</p>
-              <p className="text-sm text-gray-400 mt-1">🏆 Winner!</p>
+            <div className={`text-center ${winner ? 'winner-pop winner-glow' : ''}`}>
+              <div className="relative inline-flex flex-col items-center">
+                <span className="absolute -top-10 text-2xl winner-sparkle">✨</span>
+                <span className="absolute -top-10 right-[-28px] text-lg winner-sparkle" style={{ animationDelay: '0.3s' }}>🎉</span>
+                <span className="absolute -top-10 left-[-28px] text-lg winner-sparkle" style={{ animationDelay: '0.5s' }}>✨</span>
+                <p className="text-2xl font-black tracking-tight">{winner.name}</p>
+                {winner.instagram && <p className="text-sm font-semibold text-white/90 mt-1">@{winner.instagram.replace(/^@/, '')}</p>}
+                <p className="text-sm text-gray-400 mt-1">🏆 Winner!</p>
+              </div>
             </div>
           ) : isSpinning ? (
             <p className="text-2xl font-black tracking-tight animate-pulse">{displayName}</p>
@@ -860,9 +934,9 @@ const AdminDashboard: React.FC = () => {
       const product = products.find(p => p.id === deleteConfirm.id);
       if (product) {
         try {
-          const { deleteCloudinaryImage } = await import('../../firebase');
+          const { deleteImage } = await import('../../firebase');
           for (const img of product.images) {
-            await deleteCloudinaryImage(img);
+            await deleteImage(img);
           }
         } catch (err) {
           console.error('Error deleting product images:', err);
@@ -876,8 +950,8 @@ const AdminDashboard: React.FC = () => {
         const indexToDelete = parseInt(deleteConfirm.id);
         const categoryToDelete = categories[indexToDelete];
         if (categoryToDelete && categoryToDelete.image) {
-          const { deleteCloudinaryImage } = await import('../../firebase');
-          await deleteCloudinaryImage(categoryToDelete.image);
+          const { deleteImage } = await import('../../firebase');
+          await deleteImage(categoryToDelete.image);
         }
 
         const filteredCategories = categories.filter((_, i) => i !== indexToDelete);
@@ -1283,7 +1357,7 @@ const AdminDashboard: React.FC = () => {
                                   showToast('Stock reduced & Order Confirmed', 'success');
                                 } catch (error) {
                                   showToast('Failed to reduce stock. Order status NOT updated.', 'error');
-                                  return; // Stop update if stock reduction fails
+                                  return; 
                                 }
                               }
                               updateOrderStatus(order.id, newStatus);

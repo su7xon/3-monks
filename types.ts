@@ -31,6 +31,14 @@ export interface Story {
   createdAt: number;
 }
 
+export interface SizeGuide {
+  unit: 'inches' | 'cm';
+  measurements: {
+    name: string;
+    values: { [size: string]: string };
+  }[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -48,8 +56,12 @@ export interface Product {
   isNew?: boolean;
   isFeatured?: boolean;
   isTrending?: boolean;
+  isBestSeller?: boolean;
+  isTopPick?: boolean;
   productType?: string;
+  tags?: string[];
   createdAt?: number;
+  sizeGuide?: SizeGuide;
 }
 
 export interface CartItem extends Product {
@@ -60,6 +72,7 @@ export interface CartItem extends Product {
 
 export enum OrderStatus {
   PENDING = 'Pending',
+  CONFIRMED = 'Confirmed',
   SHIPPED = 'Shipped',
   DELIVERED = 'Delivered',
   CANCELLED = 'Cancelled'
@@ -90,5 +103,13 @@ export interface Review {
   rating: number;
   comment: string;
   status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+}
+
+export interface GiveawayEntry {
+  id: string;
+  name: string;
+  phone: string;
+  instagram?: string;
   createdAt: number;
 }
