@@ -29,7 +29,7 @@ const Footer: React.FC = () => {
             <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold text-neutral-500 mb-4 md:mb-8">Social</h4>
             <ul className="space-y-2 md:space-y-4 text-xs uppercase tracking-widest font-medium text-neutral-400">
               <li><a href="https://www.instagram.com/the_3monks_clo?igsh=aWticW9nY3E4djdr" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Instagram</a></li>
-              <li><a href="https://wa.me/919045848613" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a></li>
+              <li><a href="https://wa.me/917451861370" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">WhatsApp</a></li>
             </ul>
           </div>
         </div>

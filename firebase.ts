@@ -9,7 +9,9 @@ import {
     query,
     where,
     getDocs,
-    updateDoc
+    updateDoc,
+    increment,
+    getDoc
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Product, Order, CategoryWithImage, SiteConfig, Review } from './types';
@@ -75,7 +77,10 @@ export const uploadImage = async (base64Data: string, _path?: string): Promise<s
         const path = _path || `products/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const storageRef = ref(storage, path);
 
-        await uploadString(storageRef, cleanBase64, 'base64', { contentType: mime });
+        await uploadString(storageRef, cleanBase64, 'base64', {
+            contentType: mime,
+            cacheControl: 'public, max-age=31536000, immutable'
+        });
         const url = await getDownloadURL(storageRef);
         console.log('[Storage] Upload success:', url);
         return url;
@@ -679,6 +684,48 @@ export const saveGiveawayConfig = async (enabled: boolean) => {
     console.error('[Firebase] Error saving giveaway config:', error);
     throw error;
   }
+};
+
+const statsCollection = collection(db, 'stats');
+
+const dayKey = (date: Date = new Date()) => date.toISOString().slice(0, 10);
+
+export const recordPageView = async (): Promise<void> => {
+    try {
+        const viewDoc = doc(statsCollection, `views_${dayKey()}`);
+        await setDoc(viewDoc, { views: increment(1), date: dayKey() }, { merge: true });
+    } catch (error) {
+        console.error('[Firebase] Error recording page view:', error);
+    }
+};
+
+export const getViewsForLastDays = async (days: number): Promise<{ date: string; views: number }[]> => {
+    try {
+        const result: { date: string; views: number }[] = [];
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = dayKey(d);
+            const snapshot = await getDoc(doc(statsCollection, `views_${key}`));
+            result.push({ date: key, views: snapshot.exists() ? (snapshot.data()?.views || 0) : 0 });
+        }
+        return result;
+    } catch (error) {
+        console.error('[Firebase] Error fetching view stats:', error);
+        return [];
+    }
+};
+
+export const subscribeToTodayViews = (callback: (views: number) => void) => {
+    return onSnapshot(
+        doc(statsCollection, `views_${dayKey()}`),
+        (snapshot) => {
+            callback(snapshot.exists() ? (snapshot.data()?.views || 0) : 0);
+        },
+        (error) => {
+            console.error('[Firebase] Error subscribing to views:', error);
+        }
+    );
 };
 
 export { db };

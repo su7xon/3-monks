@@ -33,7 +33,7 @@ const Contact: React.FC = () => {
 
             <div className="flex flex-col gap-3 max-w-md font-sans">
 
-              <a href="https://wa.me/919045848613" target="_blank" rel="noopener noreferrer" className="relative w-full bg-[#25D366] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
+              <a href="https://wa.me/917451861370" target="_blank" rel="noopener noreferrer" className="relative w-full bg-[#25D366] text-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] group overflow-hidden">
                 <div className="relative z-10 flex flex-col h-full justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-full backdrop-blur-sm">

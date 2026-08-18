@@ -40,6 +40,14 @@ const ScrollToTop = () => {
         page_title: document.title
       });
     }
+    if (!pathname.startsWith('/admin')) {
+      const day = new Date().toISOString().slice(0, 10);
+      const dedupeKey = `iii_monks_viewed_${pathname}_${day}`;
+      if (!localStorage.getItem(dedupeKey)) {
+        localStorage.setItem(dedupeKey, '1');
+        import('./firebase').then(m => m.recordPageView());
+      }
+    }
   }, [pathname]);
 
   return null;

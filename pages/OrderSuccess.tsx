@@ -32,7 +32,7 @@ const OrderSuccess: React.FC = () => {
             `*Payment Method:* ${paymentMethod === 'cod' ? 'Cash on Delivery' : 'Prepaid (Razorpay)'}\n\n` +
             `--------------------------------\n` +
             `Please confirm my order! ✨`;
-        actionUrl = `https://wa.me/919045848613?text=${encodeURIComponent(text)}`;
+        actionUrl = `https://wa.me/917451861370?text=${encodeURIComponent(text)}`;
     }
 
     return (

@@ -4,6 +4,7 @@ import { useShop } from '../../store';
 import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story, Review, GiveawayEntry } from '../../types';
 import { useToast } from '../../components/Toast';
 import imageCompression from 'browser-image-compression';
+import AnalyticsTab from './AnalyticsTab';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -803,7 +804,7 @@ const AdminDashboard: React.FC = () => {
     setGiveawayEnabled
   } = useShop();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews' | 'giveaway'>(() => {
+  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews' | 'giveaway' | 'analytics'>(() => {
     return (localStorage.getItem('adminTab') as any) || 'products';
   });
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -1094,6 +1095,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'orders' as const, label: 'Orders', icon: '📋' },
     { id: 'reviews' as const, label: 'Reviews', icon: '⭐' },
     { id: 'giveaway' as const, label: 'Giveaway', icon: '🎁' },
+    { id: 'analytics' as const, label: 'Analytics', icon: '📊' },
     { id: 'config' as const, label: 'Settings', icon: '⚙️' },
   ];
 
@@ -1821,14 +1823,18 @@ const AdminDashboard: React.FC = () => {
             setGiveawayEnabled={setGiveawayEnabled}
           />
         )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab />
+        )}
       </div>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
-        <div className="flex justify-around">
+        <div className="flex overflow-x-auto justify-start gap-1 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all flex-shrink-0 ${activeTab === tab.id ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>
               <span className="text-lg">{tab.icon}</span>
-              <span className="text-[10px] font-semibold">{tab.label}</span>
+              <span className="text-[10px] font-semibold whitespace-nowrap">{tab.label}</span>
             </button>
           ))}
         </div>
