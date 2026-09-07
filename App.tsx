@@ -14,6 +14,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import ReturnPolicy from './pages/ReturnPolicy';
 import AdminDashboard from './pages/Admin/Dashboard';
+import POS from './pages/Admin/POS';
 import Giveaway from './pages/Giveaway';
 import { ToastProvider } from './components/Toast';
 
@@ -122,6 +123,7 @@ const MainLayout = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/giveaway" element={<Giveaway />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/pos" element={<POS />} />
             <Route path="/policy" element={<ReturnPolicy />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

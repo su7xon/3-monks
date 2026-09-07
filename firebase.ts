@@ -727,5 +727,39 @@ export const subscribeToTodayViews = (callback: (views: number) => void) => {
         }
     );
 };
+export const generateBarcodeValue = (): string => {
+    const ts = Date.now().toString().slice(-7);
+    const rnd = Math.floor(1000 + Math.random() * 9000).toString();
+    const raw = `${ts}${rnd}`;
+    return raw.padStart(12, '0').slice(-12);
+};
+
+export const getProductByBarcode = async (barcode: string): Promise<Product | null> => {
+    try {
+        const q1 = query(productsCollection, where('barcode', '==', barcode));
+        const snap1 = await getDocs(q1);
+        if (!snap1.empty) return { ...snap1.docs[0].data(), id: snap1.docs[0].id } as Product;
+        const all = await getDocs(productsCollection);
+        for (const d of all.docs) {
+            const p = { ...d.data(), id: d.id } as Product;
+            if (p.variantBarcode && Object.values(p.variantBarcode).includes(barcode)) return p;
+            if (p.id === barcode) return p;
+        }
+        return null;
+    } catch (error) {
+        console.error('[Barcode] lookup failed:', error);
+        return null;
+    }
+};
+
+export const getVariantByBarcode = async (barcode: string): Promise<{ product: Product; variantKey: string | null } | null> => {
+    const product = await getProductByBarcode(barcode);
+    if (!product) return null;
+    if (product.barcode === barcode) return { product, variantKey: null };
+    if (product.variantBarcode) {
+        for (const [k, v] of Object.entries(product.variantBarcode)) if (v === barcode) return { product, variantKey: k };
+    }
+    return { product, variantKey: null };
+};
 
 export { db };

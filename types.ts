@@ -53,6 +53,8 @@ export interface Product {
   variantStock?: { [key: string]: number };
   sizes: string[];
   stock: number;
+  barcode?: string;
+  variantBarcode?: { [key: string]: string };
   isNew?: boolean;
   isFeatured?: boolean;
   isTrending?: boolean;

@@ -5,6 +5,8 @@ import { OrderStatus, Product, Category, CategoryWithImage, SiteConfig, Story, R
 import { useToast } from '../../components/Toast';
 import imageCompression from 'browser-image-compression';
 import AnalyticsTab from './AnalyticsTab';
+import JsBarcode from 'jsbarcode';
+import { QRCodeSVG } from 'qrcode.react';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -58,7 +60,15 @@ const EMPTY_FORM: Partial<Product> = {
   isFeatured: false,
   isTopPick: false,
   productType: '',
-  tags: []
+  tags: [],
+  barcode: '',
+  variantBarcode: {}
+};
+
+const genBarcode = (): string => {
+  const ts = Date.now().toString().slice(-7);
+  const rnd = Math.floor(1000 + Math.random() * 9000).toString();
+  return `${ts}${rnd}`.padStart(12, '0').slice(-12);
 };
 
 const DEFAULT_TAGS = ['T-Shirts', 'Denims', 'Shirts', 'Waffles', 'Lower'];
@@ -72,17 +82,32 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
 
+  const barcodeRef = useRef<SVGSVGElement>(null);
+  const [barcodeMode, setBarcodeMode] = useState<'barcode' | 'qr'>('barcode');
+  const [qrPayload, setQrPayload] = useState<'url' | 'plain'>('url');
+
+  useEffect(() => {
+    if (formData.barcode && barcodeRef.current && barcodeMode === 'barcode') {
+      try { JsBarcode(barcodeRef.current, formData.barcode, { format: 'CODE128', width: 1.6, height: 56, displayValue: true, fontSize: 12, margin: 4 }); } catch {}
+    }
+  }, [formData.barcode, barcodeMode, isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       if (isNew) {
-        setFormData({ ...EMPTY_FORM, colorStock: {} });
+        setFormData({ ...EMPTY_FORM, id: `prod_${Date.now()}`, barcode: genBarcode(), variantBarcode: {}, colorStock: {}, variantStock: {} });
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
         setNewTag('');
       } else if (product) {
-
-        setFormData({ ...product, colorStock: product.colorStock || {}, variantStock: product.variantStock || {} });
+        setFormData({
+          ...product,
+          barcode: product.barcode || genBarcode(),
+          variantBarcode: product.variantBarcode || {},
+          colorStock: product.colorStock || {},
+          variantStock: product.variantStock || {}
+        });
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
@@ -102,8 +127,21 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     }
 
     setIsSaving(true);
+    const ensureVariantBarcodes = (): Record<string, string> => {
+      const vb: Record<string, string> = { ...(formData.variantBarcode || {}) };
+      const colors = formData.colors?.length ? formData.colors : ['Standard'];
+      const sizes = formData.sizes || [];
+      if (sizes.length > 0) {
+        for (const c of colors) for (const s of sizes) {
+          const k = `${c}_${s}`;
+          if (!vb[k]) vb[k] = genBarcode();
+        }
+        for (const k of Object.keys(vb)) if (!colors.some(c => sizes.some(s => `${c}_${s}` === k))) delete vb[k];
+      }
+      return vb;
+    };
     const newProduct: Product = {
-      id: isNew ? `prod_${Date.now()}` : (product?.id || ''),
+      id: isNew ? (formData.id || `prod_${Date.now()}`) : (product?.id || ''),
       name: formData.name || '',
       subtitle: formData.subtitle || '',
       description: formData.description || '',
@@ -115,6 +153,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
       variantStock: formData.variantStock || {},
       sizes: formData.sizes || [],
       stock: formData.stock || 0,
+      barcode: formData.barcode || genBarcode(),
+      variantBarcode: ensureVariantBarcodes(),
       isNew: formData.isNew || false,
       isFeatured: formData.isFeatured || false,
       isTrending: formData.isTrending || false,
@@ -401,6 +441,71 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
               </div>
             </div>
           )}
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold tracking-widest text-gray-900 uppercase">Barcode / QR *</label>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+                <button type="button" onClick={() => setBarcodeMode('barcode')} className={`px-3 py-1 text-xs font-bold rounded-full ${barcodeMode === 'barcode' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>BARCODE</button>
+                <button type="button" onClick={() => setBarcodeMode('qr')} className={`px-3 py-1 text-xs font-bold rounded-full ${barcodeMode === 'qr' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>QR</button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={formData.barcode || ''} onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))} placeholder="12-digit code" className="flex-1 border border-gray-200 px-3 py-2.5 text-sm font-mono rounded-lg outline-none focus:border-gray-900" />
+              <button type="button" onClick={() => setFormData(prev => ({ ...prev, barcode: genBarcode() }))} className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold whitespace-nowrap">⟳ GENERATE</button>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-center justify-center min-h-[110px] border border-dashed border-gray-200">
+              {barcodeMode==='qr' && formData.barcode && (
+                <div className="flex gap-1 mb-2">
+                  <button type="button" onClick={()=>setQrPayload('plain')} className={`px-2 py-1 text-[10px] font-bold rounded-full ${qrPayload==='plain'?'bg-gray-900 text-white':'bg-white border'}`}>BILLING QR (plain)</button>
+                  <button type="button" onClick={()=>setQrPayload('url')} className={`px-2 py-1 text-[10px] font-bold rounded-full ${qrPayload==='url'?'bg-gray-900 text-white':'bg-white border'}`}>CUSTOMER QR (link)</button>
+                </div>
+              )}
+              {formData.barcode ? (
+                barcodeMode === 'barcode' ? <svg ref={barcodeRef} className="max-w-full" /> : <QRCodeSVG value={qrPayload==='plain' ? formData.barcode : `${window.location.origin}/product/${product?.id || formData.id || 'preview'}?barcode=${formData.barcode}`} size={110} level="M" />
+              ) : <span className="text-xs text-gray-400">No barcode</span>}
+              {formData.barcode && <span className="text-[10px] font-mono text-gray-500 mt-2 text-center break-all">{barcodeMode==='barcode' ? `${formData.barcode} • CODE128 → scan at POS to BILL` : qrPayload==='plain' ? `${formData.barcode} • QR PLAIN → scan at POS camera to BILL (stock -1 on PAY)` : `${window.location.origin}/product/...?barcode=${formData.barcode} • QR LINK → customer phone opens product`}</span>}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => {
+                const w = window.open('', '_blank', 'width=320,height=380');
+                if (!w) return;
+                const svg = barcodeRef.current?.outerHTML || '';
+                const qr = barcodeMode === 'qr' ? `<div style="display:flex;justify-content:center">${document.getElementById('qr-print-'+formData.barcode)?.innerHTML || ''}</div>` : '';
+                w.document.write(`<html><head><title>Print Label</title><style>body{font-family:sans-serif;text-align:center;padding:24px}@media print{body{padding:0}}</style></head><body><h3 style="margin:0;font-size:14px">${formData.name || 'Product'}</h3><p style="margin:4px 0 12px;font-size:12px;color:#666">₹${formData.price || 0} ${formData.barcode ? '• ' + formData.barcode : ''}</p>${barcodeMode==='barcode'?svg:''}<div id="qrholder"></div><script>const holder=document.getElementById('qrholder');${barcodeMode==='qr'?`holder.innerHTML='<svg width=140 height=140>'+document.documentElement.innerHTML+'</svg>'`:''}<\/script><br/><button onclick="window.print();setTimeout(()=>window.close(),300)" style="margin-top:16px;padding:8px 16px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer">Print</button></body></html>`);
+                w.document.close();
+                setTimeout(() => w.print(), 400);
+              }} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-xs font-bold">🖨️ PRINT LABEL</button>
+              <button type="button" onClick={() => { navigator.clipboard.writeText(formData.barcode || ''); showToast('Barcode copied','success'); }} className="px-4 py-2.5 border border-gray-200 rounded-lg text-xs font-bold">COPY</button>
+            </div>
+            {formData.sizes && formData.sizes.length > 0 && formData.colors && formData.colors.length > 0 && (
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">Variant Barcodes ({Object.keys(formData.variantBarcode || {}).length})</span>
+                  <button type="button" onClick={() => {
+                    const vb: Record<string,string> = {};
+                    const cols = formData.colors || [];
+                    const szs = formData.sizes || [];
+                    for(const c of cols) for(const s of szs) vb[`${c}_${s}`]=genBarcode();
+                    setFormData(prev=>({...prev, variantBarcode: vb}));
+                  }} className="text-[10px] font-bold text-gray-900 underline">RE-GENERATE ALL</button>
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1.5">
+                  {(formData.colors || []).flatMap(c => (formData.sizes || []).map(s => {
+                    const k = `${c}_${s}`;
+                    return (
+                      <div key={k} className="flex items-center gap-2 text-xs bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-100">
+                        <span className="font-semibold text-gray-700 flex-1">{k}</span>
+                        <input value={formData.variantBarcode?.[k] || ''} onChange={(e)=> setFormData(prev=> ({...prev, variantBarcode:{...(prev.variantBarcode||{}), [k]: e.target.value}}))} className="flex-1 font-mono border border-gray-200 rounded px-2 py-1 text-xs outline-none" placeholder="barcode" />
+                        <button type="button" onClick={()=> setFormData(prev=> ({...prev, variantBarcode:{...(prev.variantBarcode||{}), [k]: genBarcode()}}))} className="text-[10px] font-bold px-2 py-1 bg-white border rounded">⟳</button>
+                      </div>
+                    );
+                  }))}
+                </div>
+              </div>
+            )}
+            <p className="text-[10px] text-gray-400">Each product + each variant gets unique code. Scan at POS to auto-identify. Leave blank = auto generate on save.</p>
+          </div>
 
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4 mb-4">
             <div className="flex items-center justify-between mb-3">
@@ -1102,9 +1207,12 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen text-black">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your store</p>
+        <div className="py-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage your store</p>
+          </div>
+          <a href="/admin/pos" className="shrink-0 px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">📷 POS Billing →</a>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
