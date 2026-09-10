@@ -1,11 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Product, Order, OrderStatus } from '../../types';
-import { getProductByBarcode, getVariantByBarcode, saveOrder, reduceStockForOrder } from '../../firebase';
+import { getVariantByBarcode, saveOrder, reduceStockForOrder } from '../../firebase';
 import { useShop } from '../../store';
 import { useToast } from '../../components/Toast';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { doc, updateDoc, increment, getDoc } from 'firebase/firestore';
-import { db, productsCollection } from '../../firebase';
 
 interface POSItem {
   product: Product;
@@ -23,31 +20,20 @@ const POS: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [showCamera, setShowCamera] = useState(false);
-  const qrRef = useRef<Html5Qrcode | null>(null);
-  const [scanAction, setScanAction] = useState<{ product: Product; variantKey: string | null } | null>(null);
-  const [actionQty, setActionQty] = useState(1);
-  const [mode, setMode] = useState<'billing' | 'stock'>('billing');
   const [scanStatus, setScanStatus] = useState<string>('');
+  const [extraDiscountPct, setExtraDiscountPct] = useState(0);
+  const [receivedAmount, setReceivedAmount] = useState(0);
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [lastDiscountPct, setLastDiscountPct] = useState(0);
+  const [lastReceived, setLastReceived] = useState(0);
 
   useEffect(() => {
     inputRef.current?.focus();
-    const h = () => inputRef.current?.focus();
-    window.addEventListener('click', h);
-    return () => window.removeEventListener('click', h);
   }, []);
 
-  useEffect(() => {
-    if (!showCamera) { qrRef.current?.stop().catch(()=>{}); return; }
-    const id = 'pos-qr-reader';
-    const qr = new Html5Qrcode(id, { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A], verbose: false });
-    qrRef.current = qr;
-    qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, async (decoded) => {
-      console.log('[POS camera] decoded:', decoded);
-      await addByBarcode(decoded);
-    }, () => {}).catch(e => { console.error(e); showToast('Camera failed: ' + (e as any)?.message || e, 'error'); });
-    return () => { qr.stop().catch(()=>{}); qrRef.current = null; };
-  }, [showCamera]);
+  const focusScanner = () => {
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
 
   const playBeep = (ok: boolean) => {
     try {
@@ -79,32 +65,16 @@ const POS: React.FC = () => {
   };
 
   const resolveProduct = async (c: string): Promise<{ product: Product; variantKey: string | null } | null> => {
-    const found = await getVariantByBarcode(c);
-    if (found) return found;
+    try {
+      const found = await getVariantByBarcode(c);
+      if (found) return found;
+    } catch {}
     const local = products.find(p => p.barcode === c || Object.values(p.variantBarcode || {}).includes(c));
     if (local) {
       const vk = local.variantBarcode ? Object.entries(local.variantBarcode).find(([, v]) => v === c)?.[0] || null : null;
       return { product: local, variantKey: vk };
     }
     return null;
-  };
-
-  const addByBarcode = async (code: string) => {
-    const raw = code.trim();
-    const c = extractBarcode(raw);
-    console.log('[POS] scanned raw:', raw, 'extracted:', c, 'mode:', mode);
-    setScanStatus(`Scanned: ${raw} → ${c}`);
-    if (!c) { setScanStatus('Empty scan'); return; }
-    if (c === lastScan) { setScanStatus(`Duplicate block: ${c}`); return; }
-    setLastScan(c);
-    setTimeout(() => setLastScan(''), 800);
-    setScanStatus(`Looking up ${c}...`);
-    const res = await resolveProduct(c);
-    if (!res) { playBeep(false); setScanStatus(`❌ Not found: ${c} — Fix missing barcodes or reprint label`); showToast(`Barcode ${c} not found`, 'error'); return; }
-    playBeep(true);
-    setScanStatus(`✅ Found: ${res.product.name}${res.variantKey ? ' '+res.variantKey : ''} — choose Add / Decrease`);
-    setActionQty(1);
-    setScanAction(res);
   };
 
   const pushToCart = (product: Product, variantKey: string | null) => {
@@ -119,25 +89,66 @@ const POS: React.FC = () => {
     });
   };
 
+  // Mall style: every scan adds directly to the bill, no popup
+  const addByBarcode = async (code: string) => {
+    const raw = code.trim();
+    const c = extractBarcode(raw);
+    if (!c) return;
+    if (c === lastScan) { setScanStatus(`Duplicate block: ${c} — wait 1 sec then scan again`); return; }
+    setLastScan(c);
+    setTimeout(() => setLastScan(''), 800);
+    setScanStatus(`Looking up ${c}...`);
+    const res = await resolveProduct(c);
+    if (!res) {
+      playBeep(false);
+      setScanStatus(`❌ Not found: ${c} — print the barcode from Dashboard first`);
+      showToast(`Barcode ${c} not found`, 'error');
+      focusScanner();
+      return;
+    }
+    playBeep(true);
+    pushToCart(res.product, res.variantKey);
+    setScanStatus(`✅ Added: ${res.product.name}${res.variantKey ? ' (' + res.variantKey + ')' : ''} — scan next item`);
+    showToast(`Added: ${res.product.name}`, 'success');
+    focusScanner();
+  };
+
   const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = scanInput.trim();
     setScanInput('');
     if (!code) return;
     await addByBarcode(code);
-    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  // Scanners without Enter-suffix just type the digits and stop.
+  // Auto-submit the scan box after a short pause so no ADD press is needed.
+  const autoTimer = useRef<any>(null);
+  useEffect(() => {
+    const v = scanInput.trim();
+    if (/^[0-9A-Za-z_-]{8,}$/.test(v)) {
+      if (autoTimer.current) clearTimeout(autoTimer.current);
+      autoTimer.current = setTimeout(() => {
+        setScanInput('');
+        addByBarcode(v);
+      }, 500);
+      return () => { if (autoTimer.current) clearTimeout(autoTimer.current); };
+    }
+  }, [scanInput]);
+
+  // USB scanner types like a keyboard wedge — capture it from anywhere,
+  // but don't disturb typing in customer fields
   useEffect(() => {
     let buffer = '';
     let lastTime = 0;
     const onKeyDown = (e: KeyboardEvent) => {
       const active = document.activeElement as HTMLElement | null;
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
-        if (active === inputRef.current) return;
+      if (active && active !== inputRef.current && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+        return;
       }
+      if (active === inputRef.current) return; // form submit handle karega
       const now = Date.now();
-      if (now - lastTime > 300) buffer = '';
+      if (now - lastTime > 100) buffer = '';
       lastTime = now;
       if (e.key === 'Enter') {
         if (buffer.length >= 4) {
@@ -154,56 +165,59 @@ const POS: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [products]);
 
-  const total = cart.reduce((s, i) => s + (i.product.salePrice || i.product.price) * i.quantity, 0);
+  const subTotal = cart.reduce((s, i) => s + (i.product.salePrice || i.product.price) * i.quantity, 0);
   const totalQty = cart.reduce((s, i) => s + i.quantity, 0);
+  const discountPct = Math.min(100, Math.max(0, extraDiscountPct || 0));
+  const discountAmt = subTotal * discountPct / 100;
+  const total = Math.max(0, subTotal - discountAmt);
+  const balance = Math.max(0, total - (receivedAmount || 0));
 
-  const handleStockAdjust = async (delta: number) => {
-    if (!scanAction) return;
-    const qty = Math.max(1, Math.abs(actionQty));
-    const d = delta > 0 ? qty : -qty;
-    setIsProcessing(true);
-    try {
-      const ref = doc(db, 'products', scanAction.product.id);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) throw new Error('Product not found');
-      const data = snap.data() as Product;
-      const updates: any = { stock: increment(d) };
-      if (scanAction.variantKey) {
-        updates[`variantStock.${scanAction.variantKey}`] = increment(d);
-        const color = scanAction.variantKey.split('_')[0];
-        if (color && color !== 'Standard') updates[`colorStock.${color}`] = increment(d);
-        const curVar = data.variantStock?.[scanAction.variantKey] || 0;
-        if (curVar + d < 0) { showToast('Not enough variant stock', 'error'); setIsProcessing(false); return; }
-      } else {
-        if ((data.stock || 0) + d < 0) { showToast('Not enough stock', 'error'); setIsProcessing(false); return; }
-      }
-      await updateDoc(ref, updates);
-      showToast(`${d > 0 ? 'Stock +'+qty : 'Stock -'+qty} done for ${scanAction.product.name}${scanAction.variantKey? ' '+scanAction.variantKey:''}`, 'success');
-      playBeep(true);
-      setScanAction(null);
-      setScanInput('');
-      setTimeout(()=> inputRef.current?.focus(), 100);
-    } catch (e: any) { console.error(e); showToast(e?.message || 'Stock update failed', 'error'); } finally { setIsProcessing(false); }
-  };
+  const money = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const fixMissingBarcodes = async () => {
-    const gen = () => Date.now().toString().slice(-7) + Math.floor(1000+Math.random()*9000).toString();
-    let fixed = 0;
-    for (const p of products) {
-      if (!p.barcode) {
-        const bc = gen().padStart(12,'0').slice(-12);
-        const vb: Record<string,string> = {};
-        const cols = p.colors?.length ? p.colors : ['Standard'];
-        const szs = p.sizes || [];
-        if (szs.length) for (const c of cols) for (const s of szs) vb[`${c}_${s}`] = gen().padStart(12,'0').slice(-12);
-        try { await updateDoc(doc(db,'products', p.id), { barcode: bc, variantBarcode: vb }); fixed++; } catch {}
-      }
-    }
-    showToast(fixed ? `Fixed ${fixed} products` : 'All products already have barcodes', fixed ? 'success' : 'info');
+  const printInvoice = (order: Order, discPct: number, received: number) => {
+    const sub = order.items.reduce((s: number, it: any) => s + (it.salePrice || it.price) * it.quantity, 0);
+    const dAmt = sub * discPct / 100;
+    const grand = Math.max(0, sub - dAmt);
+    const bal = Math.max(0, grand - received);
+    const invNo = order.id.replace('ORD_', '').slice(-6);
+    const dateStr = new Date(order.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const rows = order.items.map((it: any) => {
+      const rate = it.salePrice || it.price;
+      const amt = rate * it.quantity;
+      const variant = [it.selectedColor, it.selectedSize].filter(Boolean).join(' / ');
+      return `<tr><td><b>${it.name}</b><br/><span style="color:#70798b;font-size:9px">${variant || ''}</span></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">₹${rate}</td><td style="text-align:right">${money(amt)}</td></tr>`;
+    }).join('');
+    const w = window.open('', '_blank', 'width=420,height=600');
+    if (!w) { showToast('Popup blocked — allow popups for print', 'error'); return; }
+    w.document.write(`<html><head><title>Invoice ${order.id}</title><style>
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#17213a;font-family:Arial,sans-serif}
+@page{size:4in 4in;margin:0}
+.invoice{width:4in;padding:10px 12px;font-size:11px}
+.header{display:flex;gap:8px;align-items:flex-start}.logo{width:48px;height:48px;object-fit:contain}
+.company h1{margin:0;font-size:15px;font-weight:900}.phone,.address{font-size:9px;color:#70798b;line-height:1.4}
+.title{text-align:center;font-size:14px;font-weight:800;margin:10px 0 8px;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:5px 0}
+.meta{display:flex;justify-content:space-between;font-size:10px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashed #999;border-bottom:1px dashed #999;padding:4px 2px;text-align:left;font-size:9px;color:#555}td{border-bottom:1px dotted #ddd;padding:4px 2px;vertical-align:top}
+.breakup{margin-top:8px;border-top:1px dashed #999;padding-top:6px;font-size:10px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-weight:900;font-size:12px;color:#0877d1}
+.terms{margin-top:8px;font-size:8px;color:#555;border-top:1px dashed #999;padding-top:6px;text-align:center}
+@media print{body{margin:0}.invoice{width:4in;padding:8px}}
+</style></head><body><div class="invoice">
+<div class="header"><img class="logo" src="/logo.png"/><div class="company"><h1>The 3 Monks Clothing</h1><div class="phone">9045848613</div><div class="address">1st Floor, M&S tower, Near Jamrani Auto Stand, Panchakki Chauraha, Haldwani, Nainital</div></div></div>
+<div class="title">Tax Invoice</div>
+<div class="meta"><div><b>Bill To:</b><br/>${order.customer.name}<br/>${order.customer.phone}</div><div style="text-align:right"><b>Invoice No:</b> ${invNo}<br/><b>Date:</b> ${dateStr}<br/><b>Order:</b> ${order.id}</div></div>
+<table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="breakup"><div class="row"><span>Sub Total</span><strong>${money(sub)}</strong></div>
+<div class="row"><span>Discount (${discPct}%)</span><strong>- ${money(dAmt)}</strong></div>
+<div class="row"><span class="total">Total</span><strong class="total">${money(grand)}</strong></div>
+<div class="row"><span>Received</span><strong>${money(received)}</strong></div>
+<div class="row"><span>Balance</span><strong>${money(bal)}</strong></div></div>
+<div class="terms">Thank you for doing business with us.<br/>No returns • Exchange only on damaged/incorrect item</div>
+</div><script>window.onload=()=>{setTimeout(()=>{window.print();},300)}<\/script></body></html>`);
+    w.document.close();
   };
 
   const handleCheckout = async () => {
-    if (cart.length === 0) { showToast('Cart empty', 'error'); return; }
+    if (cart.length === 0) { showToast('Cart empty — scan items first', 'error'); return; }
     setIsProcessing(true);
     try {
       const order: Order = {
@@ -225,84 +239,66 @@ const POS: React.FC = () => {
       };
       await saveOrder(order);
       await reduceStockForOrder(order);
-      showToast(`Bill done! ${order.id} • Stock deducted`, 'success');
-      setCart([]);
+      setLastOrder(order); setLastDiscountPct(discountPct); setLastReceived(receivedAmount || total);
+      showToast(`Bill done! ${order.id}`, 'success');
+      printInvoice(order, discountPct, receivedAmount || total);
+      setCart([]); setExtraDiscountPct(0); setReceivedAmount(0);
       setCustomerName(''); setCustomerPhone('');
+      focusScanner();
     } catch (e: any) {
       showToast(e?.message || 'Checkout failed', 'error');
     } finally { setIsProcessing(false); }
   };
 
   return (
-    <div className="pt-16 pb-10 bg-gray-50 min-h-screen text-black">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black">POS • Scan Stock Control</h1>
-            <p className="text-xs text-gray-500">Kisi bhi QR/Barcode scan → popup me Add / Decrease choose → stock turant update.</p>
+    <div className="pt-28 md:pt-36 pb-10 bg-gray-50 min-h-screen text-black overflow-x-hidden relative z-0">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 w-full">
+        <div className="py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-black">Billing • Mall Style</h1>
+            <p className="text-xs text-gray-500">Step 1: scan items (beep = added) → Step 2: press PAY → 4x4 bill prints.</p>
           </div>
-          <a href="/admin" className="px-4 py-2 bg-white border rounded-lg text-xs font-bold">← Admin</a>
+          <a href="/admin" className="shrink-0 px-4 py-2 bg-white border rounded-lg text-xs font-bold text-center">← Admin</a>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 space-y-4">
-            <form onSubmit={handleScanSubmit} className="bg-white rounded-xl p-4 border shadow-sm flex gap-2">
-              <input ref={inputRef} autoFocus value={scanInput} onChange={e => setScanInput(e.target.value)} placeholder="Scan any QR / Barcode → Add / Decrease popup" className="flex-1 border-2 border-gray-900 px-4 py-3 rounded-lg font-mono text-sm outline-none focus:ring-2 focus:ring-gray-900" />
-              <button type="submit" className="px-6 py-3 bg-gray-900 text-white rounded-lg text-sm font-bold">SCAN</button>
-              <button type="button" onClick={() => setShowCamera(v=>!v)} className={`px-4 py-3 rounded-lg text-sm font-bold border ${showCamera?'bg-red-500 text-white border-red-500':'bg-white'}`}>{showCamera?'✕ Close':'📷 Camera'}</button>
-            </form>
-            {scanStatus && <div className={`text-xs font-mono px-3 py-2 rounded-lg border ${scanStatus.startsWith('✅')?'bg-green-50 border-green-200 text-green-700': scanStatus.startsWith('❌')?'bg-red-50 border-red-200 text-red-700':'bg-gray-50 border-gray-200'}`}>{scanStatus}</div>}
-            {showCamera && <div className="bg-white rounded-xl border shadow-sm p-3"><div id="pos-qr-reader" className="w-full overflow-hidden rounded-lg" /><p className="text-[10px] text-gray-400 mt-2 text-center">{mode==='stock' ? 'Camera se scan → Add / Decrease choose karo' : 'Camera se barcode/QR scan → auto cart me add → PAY pe stock -1'}</p></div>}
-            {scanAction && (
-              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
-                  <div className="flex gap-3">
-                    <img src={scanAction.product.images[0]} alt="" className="w-16 h-16 rounded-lg object-cover border" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black truncate">{scanAction.product.name}</p>
-                      <p className="text-xs text-gray-500 font-mono">{scanAction.variantKey || scanAction.product.barcode}</p>
-                      <p className="text-xs text-gray-600 mt-1">Current stock: <b>{scanAction.variantKey ? (scanAction.product.variantStock?.[scanAction.variantKey] ?? scanAction.product.stock) : scanAction.product.stock}</b></p>
-                    </div>
-                    <button onClick={()=>setScanAction(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">✕</button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-4 justify-center">
-                    <button onClick={()=> setActionQty(q=> Math.max(1, q-1))} className="w-10 h-10 border rounded-lg font-bold">−</button>
-                    <input type="number" min={1} value={actionQty} onChange={e=> setActionQty(Math.max(1, parseInt(e.target.value)||1))} className="w-20 text-center border-2 border-gray-900 rounded-lg py-2 font-bold" />
-                    <button onClick={()=> setActionQty(q=> q+1)} className="w-10 h-10 border rounded-lg font-bold">+</button>
-                    <span className="text-xs text-gray-500">Qty</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <button disabled={isProcessing} onClick={()=> handleStockAdjust(-1)} className="py-3 bg-red-500 text-white rounded-xl font-bold disabled:opacity-40">− DECREASE</button>
-                    <button disabled={isProcessing} onClick={()=> handleStockAdjust(1)} className="py-3 bg-green-600 text-white rounded-xl font-bold disabled:opacity-40">+ ADD</button>
-                  </div>
-                  <button onClick={()=> { if(!scanAction) return; pushToCart(scanAction.product, scanAction.variantKey); setScanAction(null); showToast('Added to billing cart','success'); setMode('billing'); }} className="w-full mt-2 py-2.5 border rounded-xl text-xs font-bold">Or Add to Billing Cart →</button>
-                  <p className="text-[10px] text-gray-400 text-center mt-2">ADD = stock +qty, DECREASE = stock -qty (variant + total both update)</p>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+          <div className="lg:col-span-2 space-y-4 min-w-0 w-full">
+            <form onSubmit={handleScanSubmit} className="bg-white rounded-xl p-3 sm:p-4 border shadow-sm flex flex-col sm:flex-row gap-2">
+              <input ref={inputRef} autoFocus value={scanInput} onChange={e => setScanInput(e.target.value)} placeholder="Scan with scanner — keep focus here" className="flex-1 min-w-0 w-full border-2 border-gray-900 px-4 py-3 rounded-lg font-mono text-sm outline-none focus:ring-2 focus:ring-gray-900" />
+              <div className="flex gap-2 shrink-0">
+                <button type="submit" className="flex-1 sm:flex-none px-6 py-3 bg-gray-900 text-white rounded-lg text-sm font-bold">ADD</button>
+                <button type="button" onClick={focusScanner} className="flex-1 sm:flex-none px-4 py-3 rounded-lg text-sm font-bold border bg-white">🎯 Focus</button>
               </div>
-            )}
-            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+            </form>
+            {scanStatus && <div className={`text-xs font-mono px-3 py-2 rounded-lg border break-words ${scanStatus.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-700' : scanStatus.startsWith('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-gray-50 border-gray-200'}`}>{scanStatus}</div>}
+
+            <div className="bg-white rounded-xl border shadow-sm overflow-hidden w-full">
               <div className="px-4 py-3 border-b flex justify-between items-center">
-                <span className="text-xs font-bold tracking-widest">CART • {totalQty} items</span>
+                <span className="text-xs font-bold tracking-widest">BILL • {totalQty} items</span>
                 {cart.length > 0 && <button onClick={() => setCart([])} className="text-xs font-bold text-red-500">CLEAR</button>}
               </div>
               {cart.length === 0 ? (
-                <div className="p-10 text-center text-sm text-gray-400">No items. Scan a product barcode.</div>
+                <div className="p-10 text-center">
+                  <p className="text-4xl mb-2">🧾</p>
+                  <p className="text-sm text-gray-400">No items yet. Pick up the scanner and scan the first barcode.</p>
+                  <p className="text-xs text-gray-400 mt-1">Beep = item added to the bill.</p>
+                </div>
               ) : (
                 <div className="divide-y">
                   {cart.map((it, idx) => (
-                    <div key={idx} className="flex gap-3 p-3 items-center">
-                      <img src={it.product.images[0]} alt="" className="w-14 h-14 object-cover rounded border" />
-                      <div className="flex-1 min-w-0">
+                    <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3 p-3 items-center w-full">
+                      <img src={it.product.images[0]} alt="" className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded border shrink-0" />
+                      <div className="flex-1 min-w-0 basis-40">
                         <p className="text-sm font-bold truncate">{it.product.name}</p>
-                        <p className="text-xs text-gray-500">{it.variantKey || it.product.barcode} • ₹{it.product.salePrice || it.product.price}</p>
+                        <p className="text-xs text-gray-500 truncate">{it.variantKey || it.product.barcode} • ₹{it.product.salePrice || it.product.price}</p>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setCart(prev => prev.map((p,i)=> i===idx?{...p,quantity:Math.max(1,p.quantity-1)}:p))} className="w-8 h-8 border rounded">−</button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => setCart(prev => prev.map((p, i) => i === idx ? { ...p, quantity: Math.max(1, p.quantity - 1) } : p))} className="w-8 h-8 border rounded">−</button>
                         <span className="w-8 text-center text-sm font-bold">{it.quantity}</span>
-                        <button onClick={() => setCart(prev => prev.map((p,i)=> i===idx?{...p,quantity:p.quantity+1}:p))} className="w-8 h-8 border rounded">+</button>
+                        <button onClick={() => setCart(prev => prev.map((p, i) => i === idx ? { ...p, quantity: p.quantity + 1 } : p))} className="w-8 h-8 border rounded">+</button>
                       </div>
-                      <span className="text-sm font-bold w-20 text-right">₹{(it.product.salePrice||it.product.price)*it.quantity}</span>
-                      <button onClick={() => setCart(prev=> prev.filter((_,i)=>i!==idx))} className="text-gray-400 hover:text-red-500">×</button>
+                      <span className="text-sm font-bold w-20 text-right shrink-0">₹{(it.product.salePrice || it.product.price) * it.quantity}</span>
+                      <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500 shrink-0 px-1">×</button>
                     </div>
                   ))}
                 </div>
@@ -310,44 +306,32 @@ const POS: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 w-full min-w-0 lg:sticky lg:top-36 self-start">
             <div className="bg-white rounded-xl p-4 border shadow-sm space-y-3">
-              <h3 className="text-xs font-bold tracking-widest">CUSTOMER (optional)</h3>
-              <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Name (Walk-in)" className="w-full border px-3 py-2.5 rounded-lg text-sm outline-none focus:border-gray-900" />
-              <input value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} placeholder="Phone" className="w-full border px-3 py-2.5 rounded-lg text-sm outline-none focus:border-gray-900" />
-              <div className="pt-2 border-t space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-bold">₹{total}</span></div>
-                <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black">₹{total}</span></div>
+              <h3 className="text-xs font-bold tracking-widest">CUSTOMER</h3>
+              <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Name (Walk-in)" className="w-full border px-3 py-2.5 rounded-lg text-sm outline-none focus:border-gray-900" />
+              <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="Phone" className="w-full border px-3 py-2.5 rounded-lg text-sm outline-none focus:border-gray-900" />
+              <div className="pt-2 border-t space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Sub Total</span><span className="font-bold">₹{subTotal.toFixed(2)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">Discount %</span><input type="number" min={0} max={100} value={extraDiscountPct} onChange={e => setExtraDiscountPct(Number(e.target.value))} className="w-20 border px-2 py-1 rounded text-right text-sm font-bold" /></div>
+                {discountAmt > 0 && <div className="flex justify-between text-xs"><span className="text-gray-500">Discount Amt</span><span className="font-bold">- ₹{discountAmt.toFixed(2)}</span></div>}
+                <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black">₹{total.toFixed(2)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">Received</span><input type="number" min={0} value={receivedAmount} onChange={e => setReceivedAmount(Number(e.target.value))} placeholder={total.toFixed(0)} className="w-24 border px-2 py-1 rounded text-right text-sm font-bold" /></div>
+                <div className="flex justify-between text-xs"><span className="text-gray-500">Balance</span><span className="font-bold">₹{balance.toFixed(2)}</span></div>
               </div>
-              <button onClick={handleCheckout} disabled={isProcessing || cart.length===0} className="w-full py-3 bg-green-600 text-white rounded-lg font-bold text-sm disabled:opacity-40">{isProcessing?'Processing...':'PAY & DEDUCT STOCK'}</button>
-              <p className="text-[10px] text-gray-400 text-center">Stock deduct via Firebase increment (atomic). Beep = success.</p>
+              <button onClick={handleCheckout} disabled={isProcessing || cart.length === 0} className="w-full py-3 bg-green-600 text-white rounded-lg font-bold text-sm disabled:opacity-40">{isProcessing ? 'Printing...' : `PAY ₹${total.toFixed(0)} • PRINT BILL`}</button>
+              {lastOrder && <button onClick={() => printInvoice(lastOrder, lastDiscountPct, lastReceived)} className="w-full py-2.5 border border-gray-900 rounded-lg font-bold text-xs">🖨 REPRINT LAST BILL</button>}
+              <p className="text-[10px] text-gray-400 text-center">4x4 inch paper • Select 4x4 in the print dialog • Keep popups allowed</p>
             </div>
 
             <div className="bg-gray-900 text-white rounded-xl p-4 text-xs space-y-2">
-              <p className="font-bold">How to use</p>
+              <p className="font-bold">Scanner setup (one time)</p>
               <ol className="list-decimal ml-4 space-y-1 text-gray-300">
-                <li>Product save pe barcode auto-banta + print karo.</li>
-                <li>USB scanner plug karo → POS input focused rahega.</li>
-                <li>Scan → popup → ADD / DECREASE → stock turant update.</li>
-                <li>Variant (M/Black) ka alag barcode = exact stock deduct.</li>
+                <li>Plug in the USB scanner — it works like a keyboard.</li>
+                <li>From its manual, scan the <b>Enter suffix ON</b> barcode.</li>
+                <li>Keep focus in the scan box here, then scan products.</li>
+                <li>Beep = added. After 3-4 scans press PAY.</li>
               </ol>
-            </div>
-            <div className="bg-white rounded-xl p-4 border shadow-sm space-y-2">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-bold tracking-widest">DEBUG • Test barcodes</h3>
-                <button onClick={fixMissingBarcodes} className="text-[10px] font-bold px-2 py-1 bg-gray-900 text-white rounded">Fix missing barcodes</button>
-              </div>
-              <p className="text-[10px] text-gray-400">Copy barcode → input me paste → SCAN → popup aana chahiye. Missing barcode wale products pe pehle Fix dabao.</p>
-              <div className="max-h-48 overflow-y-auto divide-y text-xs">
-                {products.slice(0,8).map(p=> (
-                  <div key={p.id} className="py-2 flex justify-between gap-2">
-                    <span className="font-semibold truncate">{p.name.slice(0,22)}</span>
-                    <button onClick={()=> { setScanInput(p.barcode || p.id); }} className="font-mono bg-gray-100 px-2 py-1 rounded text-[10px]">{p.barcode || 'NO BARCODE'}</button>
-                  </div>
-                ))}
-                {products.length===0 && <p className="text-xs text-gray-400 py-4 text-center">No products loaded yet</p>}
-              </div>
-              {lastScan && <p className="text-[10px] font-mono text-gray-500">Last scanned: {lastScan}</p>}
             </div>
           </div>
         </div>

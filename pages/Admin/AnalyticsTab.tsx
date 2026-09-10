@@ -113,7 +113,7 @@ const AnalyticsTab: React.FC = () => {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
         <h2 className="text-base font-bold text-gray-900 mb-1">Firebase Cost Breakdown (Today)</h2>
-        <p className="text-[11px] text-gray-400 mb-4">Estimate — exact bill Firebase console → Billing me dekho. Prices: reads $0.06/100K, writes $0.18/100K, downloads $0.12/GB, storage $0.026/GB. Free daily: 50K reads, 20K writes.</p>
+        <p className="text-[11px] text-gray-400 mb-4">Estimate — check the exact bill in Firebase console → Billing. Prices: reads $0.06/100K, writes $0.18/100K, downloads $0.12/GB, storage $0.026/GB. Free daily: 50K reads, 20K writes.</p>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between border-b border-gray-100 pb-3">
             <span className="text-gray-600">Firestore reads <span className="text-gray-400">({today.reads.toLocaleString('en-IN')} / 50K free)</span></span>

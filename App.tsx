@@ -15,6 +15,7 @@ import Contact from './pages/Contact';
 import ReturnPolicy from './pages/ReturnPolicy';
 import AdminDashboard from './pages/Admin/Dashboard';
 import POS from './pages/Admin/POS';
+import StockManager from './pages/Admin/StockManager';
 import Giveaway from './pages/Giveaway';
 import { ToastProvider } from './components/Toast';
 
@@ -124,6 +125,7 @@ const MainLayout = () => {
             <Route path="/giveaway" element={<Giveaway />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/pos" element={<POS />} />
+            <Route path="/admin/stock/:productId" element={<StockManager />} />
             <Route path="/policy" element={<ReturnPolicy />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

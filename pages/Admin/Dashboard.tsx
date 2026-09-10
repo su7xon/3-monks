@@ -116,6 +116,13 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
     }
   }, [isOpen, isNew, product]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -255,8 +262,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl text-black">
+    <div className="fixed inset-0 bg-black/60 z-[70] flex items-end md:items-center justify-center p-4 pt-28 md:pt-36 pb-6" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl text-black" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-bold text-gray-900">
             {isNew ? 'Add New Product' : 'Edit Product'}
@@ -457,25 +464,79 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <div className="bg-gray-50 rounded-lg p-4 flex flex-col items-center justify-center min-h-[110px] border border-dashed border-gray-200">
               {barcodeMode==='qr' && formData.barcode && (
                 <div className="flex gap-1 mb-2">
-                  <button type="button" onClick={()=>setQrPayload('plain')} className={`px-2 py-1 text-[10px] font-bold rounded-full ${qrPayload==='plain'?'bg-gray-900 text-white':'bg-white border'}`}>BILLING QR (plain)</button>
+                  <button type="button" onClick={()=>setQrPayload('plain')} className={`px-2 py-1 text-[10px] font-bold rounded-full ${qrPayload==='plain'?'bg-gray-900 text-white':'bg-white border'}`}>STOCK QR (scan)</button>
                   <button type="button" onClick={()=>setQrPayload('url')} className={`px-2 py-1 text-[10px] font-bold rounded-full ${qrPayload==='url'?'bg-gray-900 text-white':'bg-white border'}`}>CUSTOMER QR (link)</button>
                 </div>
               )}
               {formData.barcode ? (
-                barcodeMode === 'barcode' ? <svg ref={barcodeRef} className="max-w-full" /> : <QRCodeSVG value={qrPayload==='plain' ? formData.barcode : `${window.location.origin}/product/${product?.id || formData.id || 'preview'}?barcode=${formData.barcode}`} size={110} level="M" />
+                barcodeMode === 'barcode' ? <svg ref={barcodeRef} className="max-w-full" /> : (
+                  <div className="relative p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <QRCodeSVG
+                      value={qrPayload==='plain'
+                        ? `${window.location.origin}/admin/stock/${product?.id || formData.id || 'preview'}?barcode=${formData.barcode}`
+                        : `${window.location.origin}/product/${product?.id || formData.id || 'preview'}?barcode=${formData.barcode}`}
+                      size={130}
+                      level="M"
+                      bgColor="#ffffff"
+                      fgColor="#111111"
+                      imageSettings={{
+                        src: '/3MONK.png',
+                        x: undefined,
+                        y: undefined,
+                        height: 28,
+                        width: 28,
+                        excavate: true,
+                      }}
+                    />
+                    <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider" style={{background: qrPayload==='plain' ? '#111' : '#16a34a', color: '#fff'}}>
+                      {qrPayload==='plain' ? 'STOCK' : 'SHOP'}
+                    </div>
+                  </div>
+                )
               ) : <span className="text-xs text-gray-400">No barcode</span>}
-              {formData.barcode && <span className="text-[10px] font-mono text-gray-500 mt-2 text-center break-all">{barcodeMode==='barcode' ? `${formData.barcode} • CODE128 → scan at POS to BILL` : qrPayload==='plain' ? `${formData.barcode} • QR PLAIN → scan at POS camera to BILL (stock -1 on PAY)` : `${window.location.origin}/product/...?barcode=${formData.barcode} • QR LINK → customer phone opens product`}</span>}
+              {formData.barcode && <span className="text-[10px] font-mono text-gray-500 mt-2 text-center break-all">{barcodeMode==='barcode' ? `${formData.barcode} • CODE128 → scan at POS to BILL` : qrPayload==='plain' ? `STOCK QR → scan to open stock manager for this product` : `${window.location.origin}/product/...?barcode=${formData.barcode} • QR LINK → customer phone opens product`}</span>}
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => {
-                const w = window.open('', '_blank', 'width=320,height=380');
+                const w = window.open('', '_blank', 'width=420,height=600');
                 if (!w) return;
                 const svg = barcodeRef.current?.outerHTML || '';
-                const qr = barcodeMode === 'qr' ? `<div style="display:flex;justify-content:center">${document.getElementById('qr-print-'+formData.barcode)?.innerHTML || ''}</div>` : '';
-                w.document.write(`<html><head><title>Print Label</title><style>body{font-family:sans-serif;text-align:center;padding:24px}@media print{body{padding:0}}</style></head><body><h3 style="margin:0;font-size:14px">${formData.name || 'Product'}</h3><p style="margin:4px 0 12px;font-size:12px;color:#666">₹${formData.price || 0} ${formData.barcode ? '• ' + formData.barcode : ''}</p>${barcodeMode==='barcode'?svg:''}<div id="qrholder"></div><script>const holder=document.getElementById('qrholder');${barcodeMode==='qr'?`holder.innerHTML='<svg width=140 height=140>'+document.documentElement.innerHTML+'</svg>'`:''}<\/script><br/><button onclick="window.print();setTimeout(()=>window.close(),300)" style="margin-top:16px;padding:8px 16px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer">Print</button></body></html>`);
+                const pName = (formData.name || 'Product').replace(/</g, '&lt;');
+                const pPrice = Number(formData.price || 0);
+                const pBarcode = formData.barcode || '';
+                const invNo = String(Date.now()).slice(-6);
+                const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const amt = '₹' + pPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                w.document.write(`<html><head><title>Tax Invoice ${invNo}</title><style>
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#17213a;font-family:Arial,sans-serif}
+@page{size:4in 4in;margin:0}
+.invoice{width:4in;padding:10px 12px;font-size:11px}
+.header{display:flex;gap:8px;align-items:flex-start}.logo{width:48px;height:48px;object-fit:contain}
+.company h1{margin:0;font-size:15px;font-weight:900}.phone,.address{font-size:9px;color:#70798b;line-height:1.4}
+.title{text-align:center;font-size:14px;font-weight:800;margin:10px 0 8px;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:5px 0}
+.meta{display:flex;justify-content:space-between;font-size:10px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashed #999;border-bottom:1px dashed #999;padding:4px 2px;text-align:left;font-size:9px;color:#555}td{border-bottom:1px dotted #ddd;padding:4px 2px;vertical-align:top}
+.breakup{margin-top:8px;border-top:1px dashed #999;padding-top:6px;font-size:10px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-weight:900;font-size:12px;color:#0877d1}
+.barcodebox{margin-top:8px;text-align:center;border-top:1px dashed #999;padding-top:6px}.barcodebox svg{max-width:100%;height:50px}
+.terms{margin-top:8px;font-size:8px;color:#555;border-top:1px dashed #999;padding-top:6px;text-align:center}
+@media print{body{margin:0}.invoice{width:4in;padding:8px}}
+</style></head><body><div class="invoice">
+<div class="header"><img class="logo" src="/logo.png"/><div class="company"><h1>The 3 Monks Clothing</h1><div class="phone">9045848613</div><div class="address">1st Floor, M&S tower, Near Jamrani Auto Stand, Panchakki Chauraha, Haldwani, Nainital</div></div></div>
+<div class="title">Tax Invoice</div>
+<div class="meta"><div><b>Bill To:</b><br/>Walk-in<br/>--</div><div style="text-align:right"><b>Invoice No:</b> ${invNo}<br/><b>Date:</b> ${dateStr}</div></div>
+<table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Amount</th></tr></thead>
+<tbody><tr><td><b>${pName}</b><br/><span style="color:#70798b;font-size:9px">${pBarcode}</span></td><td style="text-align:center">1</td><td style="text-align:right">₹${pPrice}</td><td style="text-align:right">${amt}</td></tr></tbody></table>
+<div class="breakup"><div class="row"><span>Sub Total</span><strong>${amt}</strong></div>
+<div class="row"><span>Additional Discount (0%)</span><strong>- ₹0.00</strong></div>
+<div class="row"><span class="total">Total Amount</span><strong class="total">${amt}</strong></div>
+<div class="row"><span>Received Amount</span><strong>${amt}</strong></div>
+<div class="row"><span>Transaction Balance</span><strong>₹0.00</strong></div></div>
+<div class="barcodebox">${svg}<div style="font-size:9px;font-family:monospace;margin-top:2px">${pBarcode}</div></div>
+<div class="terms"><strong>Terms & Conditions :</strong> Thank you for doing business with us.</div>
+</div><script>window.onload=()=>{setTimeout(()=>{window.print();},300)}<\/script></body></html>`);
                 w.document.close();
                 setTimeout(() => w.print(), 400);
-              }} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-xs font-bold">🖨️ PRINT LABEL</button>
+              }} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-xs font-bold">🖨️ PRINT BILL (4x4)</button>
               <button type="button" onClick={() => { navigator.clipboard.writeText(formData.barcode || ''); showToast('Barcode copied','success'); }} className="px-4 py-2.5 border border-gray-200 rounded-lg text-xs font-bold">COPY</button>
             </div>
             {formData.sizes && formData.sizes.length > 0 && formData.colors && formData.colors.length > 0 && (
@@ -1205,14 +1266,14 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="pt-16 pb-24 md:pb-12 bg-gray-50 min-h-screen text-black">
+    <div className="pt-28 md:pt-36 pb-24 md:pb-12 bg-gray-50 min-h-screen text-black relative z-0">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="py-6 flex items-start justify-between gap-4">
+        <div className="py-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-sm text-gray-500 mt-1">Manage your store</p>
           </div>
-          <a href="/admin/pos" className="shrink-0 px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">📷 POS Billing →</a>
+          <a href="/admin/pos" className="shrink-0 px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">🧾 Billing →</a>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

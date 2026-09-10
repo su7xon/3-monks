@@ -257,6 +257,42 @@ export const getProductsOnce = async (): Promise<Product[]> => {
     }
 };
 
+export const getProductById = async (productId: string): Promise<Product | null> => {
+    try {
+        const snapshot = await getDoc(doc(productsCollection, productId));
+        if (snapshot.exists()) {
+            return { ...snapshot.data(), id: snapshot.id } as Product;
+        }
+        return null;
+    } catch (error) {
+        console.error('[Firebase] Error fetching product by ID:', error);
+        return null;
+    }
+};
+
+export const updateProductStock = async (
+    productId: string,
+    variantStock: { [key: string]: number },
+    totalStock: number,
+    colorStock?: { [key: string]: number }
+) => {
+    try {
+        const productRef = doc(productsCollection, productId);
+        const updates: any = {
+            stock: totalStock,
+            variantStock: variantStock,
+        };
+        if (colorStock) {
+            updates.colorStock = colorStock;
+        }
+        await updateDoc(productRef, updates);
+        console.log('[Firebase] Stock updated for product:', productId, 'Total:', totalStock);
+    } catch (error) {
+        console.error('[Firebase] Error updating product stock:', error);
+        throw error;
+    }
+};
+
 export const getCategoriesOnce = async (): Promise<CategoryWithImage[]> => {
     try {
         const snapshot = await getDocs(categoriesCollection);
