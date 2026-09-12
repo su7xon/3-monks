@@ -83,6 +83,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   const { showToast } = useToast();
 
   const barcodeRef = useRef<SVGSVGElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   const [barcodeMode, setBarcodeMode] = useState<'barcode' | 'qr'>('barcode');
   const [qrPayload, setQrPayload] = useState<'url' | 'plain'>('url');
 
@@ -469,8 +470,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
                 </div>
               )}
               {formData.barcode ? (
-                barcodeMode === 'barcode' ? <svg ref={barcodeRef} className="max-w-full" /> : (
-                  <div className="relative p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                barcodeMode === 'barcode' ? (
+                  <div className="bg-white px-6 py-4 flex flex-col items-center shadow-sm" style={{ minWidth: 260 }}>
+                    <div className="text-center font-medium text-black leading-tight" style={{ fontSize: 26 }}>{formData.name || 'Product'}</div>
+                    <div className="text-center font-medium text-black leading-tight mt-1" style={{ fontSize: 24 }}>MRP - Rs. {Number(formData.price || 0).toLocaleString('en-IN')}</div>
+                    <svg ref={barcodeRef} className="max-w-full mt-1" />
+                  </div>
+                ) : (
+                  <div ref={qrRef} className="relative bg-white px-6 py-4 flex flex-col items-center shadow-sm" style={{ minWidth: 260 }}>
+                    <div className="text-center font-medium text-black leading-tight" style={{ fontSize: 26 }}>{formData.name || 'Product'}</div>
+                    <div className="text-center font-medium text-black leading-tight mt-1 mb-2" style={{ fontSize: 24 }}>MRP - Rs. {Number(formData.price || 0).toLocaleString('en-IN')}</div>
                     <QRCodeSVG
                       value={qrPayload==='plain'
                         ? `${window.location.origin}/admin/stock/${product?.id || formData.id || 'preview'}?barcode=${formData.barcode}`
@@ -494,49 +503,87 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
                   </div>
                 )
               ) : <span className="text-xs text-gray-400">No barcode</span>}
-              {formData.barcode && <span className="text-[10px] font-mono text-gray-500 mt-2 text-center break-all">{barcodeMode==='barcode' ? `${formData.barcode} • CODE128 → scan at POS to BILL` : qrPayload==='plain' ? `STOCK QR → scan to open stock manager for this product` : `${window.location.origin}/product/...?barcode=${formData.barcode} • QR LINK → customer phone opens product`}</span>}
+              {formData.barcode && <span className="text-[10px] font-mono text-gray-500 mt-2 text-center break-all">{barcodeMode==='barcode' ? `CODE128 → scan at POS to BILL` : qrPayload==='plain' ? `STOCK QR → scan to open stock manager for this product` : `QR LINK → customer phone opens product`}</span>}
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => {
-                const w = window.open('', '_blank', 'width=420,height=600');
-                if (!w) return;
-                const svg = barcodeRef.current?.outerHTML || '';
-                const pName = (formData.name || 'Product').replace(/</g, '&lt;');
+                const code = formData.barcode || '';
+                if (!code) { showToast('No barcode to download', 'error'); return; }
+                const pName = (formData.name || 'Product').replace(/[^\w\-]+/g, '_').slice(0, 40);
+                const pDisplayName = (formData.name || 'Product').slice(0, 40);
                 const pPrice = Number(formData.price || 0);
-                const pBarcode = formData.barcode || '';
-                const invNo = String(Date.now()).slice(-6);
-                const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                const amt = '₹' + pPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                w.document.write(`<html><head><title>Tax Invoice ${invNo}</title><style>
-*{box-sizing:border-box}body{margin:0;background:#fff;color:#17213a;font-family:Arial,sans-serif}
-@page{size:4in 4in;margin:0}
-.invoice{width:4in;padding:10px 12px;font-size:11px}
-.header{display:flex;gap:8px;align-items:flex-start}.logo{width:48px;height:48px;object-fit:contain}
-.company h1{margin:0;font-size:15px;font-weight:900}.phone,.address{font-size:9px;color:#70798b;line-height:1.4}
-.title{text-align:center;font-size:14px;font-weight:800;margin:10px 0 8px;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:5px 0}
-.meta{display:flex;justify-content:space-between;font-size:10px;margin-bottom:8px}
-table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashed #999;border-bottom:1px dashed #999;padding:4px 2px;text-align:left;font-size:9px;color:#555}td{border-bottom:1px dotted #ddd;padding:4px 2px;vertical-align:top}
-.breakup{margin-top:8px;border-top:1px dashed #999;padding-top:6px;font-size:10px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-weight:900;font-size:12px;color:#0877d1}
-.barcodebox{margin-top:8px;text-align:center;border-top:1px dashed #999;padding-top:6px}.barcodebox svg{max-width:100%;height:50px}
-.terms{margin-top:8px;font-size:8px;color:#555;border-top:1px dashed #999;padding-top:6px;text-align:center}
-@media print{body{margin:0}.invoice{width:4in;padding:8px}}
-</style></head><body><div class="invoice">
-<div class="header"><img class="logo" src="/logo.png"/><div class="company"><h1>The 3 Monks Clothing</h1><div class="phone">9045848613</div><div class="address">1st Floor, M&S tower, Near Jamrani Auto Stand, Panchakki Chauraha, Haldwani, Nainital</div></div></div>
-<div class="title">Tax Invoice</div>
-<div class="meta"><div><b>Bill To:</b><br/>Walk-in<br/>--</div><div style="text-align:right"><b>Invoice No:</b> ${invNo}<br/><b>Date:</b> ${dateStr}</div></div>
-<table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Amount</th></tr></thead>
-<tbody><tr><td><b>${pName}</b><br/><span style="color:#70798b;font-size:9px">${pBarcode}</span></td><td style="text-align:center">1</td><td style="text-align:right">₹${pPrice}</td><td style="text-align:right">${amt}</td></tr></tbody></table>
-<div class="breakup"><div class="row"><span>Sub Total</span><strong>${amt}</strong></div>
-<div class="row"><span>Additional Discount (0%)</span><strong>- ₹0.00</strong></div>
-<div class="row"><span class="total">Total Amount</span><strong class="total">${amt}</strong></div>
-<div class="row"><span>Received Amount</span><strong>${amt}</strong></div>
-<div class="row"><span>Transaction Balance</span><strong>₹0.00</strong></div></div>
-<div class="barcodebox">${svg}<div style="font-size:9px;font-family:monospace;margin-top:2px">${pBarcode}</div></div>
-<div class="terms"><strong>Terms & Conditions :</strong> Thank you for doing business with us.</div>
-</div><script>window.onload=()=>{setTimeout(()=>{window.print();},300)}<\/script></body></html>`);
-                w.document.close();
-                setTimeout(() => w.print(), 400);
-              }} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-xs font-bold">🖨️ PRINT BILL (4x4)</button>
+                const pPriceStr = 'MRP - Rs. ' + pPrice.toLocaleString('en-IN');
+                const downloadPng = (svgEl: SVGSVGElement | null, fileName: string) => {
+                  if (!svgEl) { showToast('Barcode not rendered yet', 'error'); return; }
+                  const clone = svgEl.cloneNode(true) as SVGSVGElement;
+                  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                  const w = svgEl.clientWidth || svgEl.viewBox?.baseVal?.width || 300;
+                  const h = svgEl.clientHeight || svgEl.viewBox?.baseVal?.height || 150;
+                  if (!clone.getAttribute('width')) clone.setAttribute('width', String(w * 3));
+                  if (!clone.getAttribute('height')) clone.setAttribute('height', String(h * 3));
+                  // white background so scanner prints clean
+                  const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                  bgRect.setAttribute('width', '100%');
+                  bgRect.setAttribute('height', '100%');
+                  bgRect.setAttribute('fill', 'white');
+                  clone.insertBefore(bgRect, clone.firstChild);
+                  const svgData = new XMLSerializer().serializeToString(clone);
+                  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                  const url = URL.createObjectURL(svgBlob);
+                  const img = new Image();
+                  img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = 3;
+                    const bw = img.width * scale || 900;
+                    const bh = img.height * scale || 450;
+                    const headerH = 170;
+                    canvas.width = Math.max(bw, 900);
+                    canvas.height = headerH + bh + 20;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#111111';
+                    ctx.textAlign = 'center';
+                    // product name upar
+                    ctx.font = '900 46px Arial, sans-serif';
+                    const cx = canvas.width / 2;
+                    // name trim if too long
+                    let name = pDisplayName;
+                    while (ctx.measureText(name).width > canvas.width - 40 && name.length > 10) name = name.slice(0, -2);
+                    if (name !== pDisplayName) name += '…';
+                    ctx.fillText(name, cx, 60);
+                    // price uske neeche
+                    ctx.font = '900 52px Arial, sans-serif';
+                    ctx.fillText(pPriceStr, cx, 125);
+                    ctx.drawImage(img, (canvas.width - bw) / 2, headerH, bw, bh);
+                    URL.revokeObjectURL(url);
+                    const a = document.createElement('a');
+                    a.download = fileName;
+                    a.href = canvas.toDataURL('image/png');
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    showToast('Barcode image downloaded', 'success');
+                  };
+                  img.onerror = () => {
+                    // fallback: download raw SVG
+                    const a = document.createElement('a');
+                    a.download = fileName.replace(/\.png$/, '.svg');
+                    a.href = url;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                  };
+                  img.src = url;
+                };
+                if (barcodeMode === 'qr') {
+                  const svgEl = qrRef.current?.querySelector('svg') as SVGSVGElement | null;
+                  downloadPng(svgEl, `${pName}_${code}_QR.png`);
+                } else {
+                  downloadPng(barcodeRef.current, `${pName}_${code}.png`);
+                }
+              }} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-xs font-bold">⬇️ DOWNLOAD BARCODE IMAGE</button>
               <button type="button" onClick={() => { navigator.clipboard.writeText(formData.barcode || ''); showToast('Barcode copied','success'); }} className="px-4 py-2.5 border border-gray-200 rounded-lg text-xs font-bold">COPY</button>
             </div>
             {formData.sizes && formData.sizes.length > 0 && formData.colors && formData.colors.length > 0 && (
