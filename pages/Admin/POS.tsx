@@ -185,22 +185,22 @@ const POS: React.FC = () => {
       const rate = it.salePrice || it.price;
       const amt = rate * it.quantity;
       const variant = [it.selectedColor, it.selectedSize].filter(Boolean).join(' / ');
-      return `<tr><td><b>${it.name}</b><br/><span style="color:#70798b;font-size:9px">${variant || ''}</span></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">₹${rate}</td><td style="text-align:right">${money(amt)}</td></tr>`;
+      return `<tr><td><b>${it.name}</b><br/><span style="color:#70798b;font-size:6px">${variant || ''}</span></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">₹${rate}</td><td style="text-align:right">${money(amt)}</td></tr>`;
     }).join('');
-    const w = window.open('', '_blank', 'width=420,height=600');
+    const w = window.open('', '_blank', 'width=300,height=600');
     if (!w) { showToast('Popup blocked — allow popups for print', 'error'); return; }
     w.document.write(`<html><head><title>Invoice ${order.id}</title><style>
 *{box-sizing:border-box}body{margin:0;background:#fff;color:#17213a;font-family:Arial,sans-serif}
-@page{size:4in 4in;margin:0}
-.invoice{width:4in;padding:10px 12px;font-size:11px}
-.header{display:flex;gap:8px;align-items:flex-start}.logo{width:48px;height:48px;object-fit:contain}
-.company h1{margin:0;font-size:15px;font-weight:900}.phone,.address{font-size:9px;color:#70798b;line-height:1.4}
-.title{text-align:center;font-size:14px;font-weight:800;margin:10px 0 8px;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:5px 0}
-.meta{display:flex;justify-content:space-between;font-size:10px;margin-bottom:8px}
-table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashed #999;border-bottom:1px dashed #999;padding:4px 2px;text-align:left;font-size:9px;color:#555}td{border-bottom:1px dotted #ddd;padding:4px 2px;vertical-align:top}
-.breakup{margin-top:8px;border-top:1px dashed #999;padding-top:6px;font-size:10px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-weight:900;font-size:12px;color:#0877d1}
-.terms{margin-top:8px;font-size:8px;color:#555;border-top:1px dashed #999;padding-top:6px;text-align:center}
-@media print{body{margin:0}.invoice{width:4in;padding:8px}}
+@page{size:2.76in auto;margin:0}
+.invoice{width:2.76in;height:auto;padding:4px 6px;font-size:7px}
+.header{display:flex;gap:5px;align-items:flex-start}.logo{width:28px;height:28px;object-fit:contain}
+.company h1{margin:0;font-size:10px;font-weight:900}.phone,.address{font-size:6px;color:#70798b;line-height:1.3}
+.title{text-align:center;font-size:8px;font-weight:800;margin:4px 0;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:2px 0}
+.meta{display:flex;justify-content:space-between;font-size:7px;margin-bottom:4px;line-height:1.3}
+table{width:100%;border-collapse:collapse;font-size:7px}th{border-top:1px dashed #999;border-bottom:1px dashed #999;padding:2px 1px;text-align:left;font-size:6px;color:#555}td{border-bottom:1px dotted #ddd;padding:2px 1px;vertical-align:top}
+.breakup{margin-top:4px;border-top:1px dashed #999;padding-top:3px;font-size:7px}.row{display:flex;justify-content:space-between;padding:1px 0}.total{font-weight:900;font-size:8px;color:#0877d1}
+.terms{margin-top:4px;font-size:5px;color:#555;border-top:1px dashed #999;padding-top:3px;text-align:center}
+@media print{body{margin:0}.invoice{width:2.76in;height:auto;padding:4px 6px}}
 </style></head><body><div class="invoice">
 <div class="header"><img class="logo" src="/logo.png"/><div class="company"><h1>The 3 Monks Clothing</h1><div class="phone">9045848613</div><div class="address">1st Floor, M&S tower, Near Jamrani Auto Stand, Panchakki Chauraha, Haldwani, Nainital</div></div></div>
 <div class="title">Tax Invoice</div>
@@ -256,7 +256,7 @@ table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashe
         <div className="py-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-black">Billing • Mall Style</h1>
-            <p className="text-xs text-gray-500">Step 1: scan items (beep = added) → Step 2: press PAY → 4x4 bill prints.</p>
+            <p className="text-xs text-gray-500">Step 1: scan items (beep = added) → Step 2: press PAY → 2.76" wide roll prints (height auto).</p>
           </div>
           <a href="/admin" className="shrink-0 px-4 py-2 bg-white border rounded-lg text-xs font-bold text-center">← Admin</a>
         </div>
@@ -321,7 +321,7 @@ table{width:100%;border-collapse:collapse;font-size:10px}th{border-top:1px dashe
               </div>
               <button onClick={handleCheckout} disabled={isProcessing || cart.length === 0} className="w-full py-3 bg-green-600 text-white rounded-lg font-bold text-sm disabled:opacity-40">{isProcessing ? 'Printing...' : `PAY ₹${total.toFixed(0)} • PRINT BILL`}</button>
               {lastOrder && <button onClick={() => printInvoice(lastOrder, lastDiscountPct, lastReceived)} className="w-full py-2.5 border border-gray-900 rounded-lg font-bold text-xs">🖨 REPRINT LAST BILL</button>}
-              <p className="text-[10px] text-gray-400 text-center">4x4 inch paper • Select 4x4 in the print dialog • Keep popups allowed</p>
+              <p className="text-[10px] text-gray-400 text-center">2.76 inch wide roll • Height auto (continuous) • Margins None • Keep popups allowed</p>
             </div>
 
             <div className="bg-gray-900 text-white rounded-xl p-4 text-xs space-y-2">
