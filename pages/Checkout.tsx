@@ -78,17 +78,10 @@ const Checkout: React.FC = () => {
     const amountToPay = paymentMethod === 'razorpay' ? finalTotal : shippingCost;
 
     if (amountToPay > 0) {
-      try {
-        await addOrder(order);
-      } catch {
-        alert('Failed to save order. Please try again.');
-        setLoading(false);
-        return;
-      }
-
+      // No Firestore write before payment. Pending docs are created only
+      // when verification fails (money possibly captured, needs manual check).
       const res = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
       if (!res) {
-        try { await deleteOrder(order.id); } catch {}
         alert('Razorpay SDK failed to load. Are you online?');
         setLoading(false);
         return;
@@ -101,7 +94,6 @@ const Checkout: React.FC = () => {
         });
 
         if (result.status === 429) {
-          try { await deleteOrder(order.id); } catch {}
           alert('Too many attempts. Thodi der ruk ke try karo.');
           setLoading(false);
           return;
@@ -110,7 +102,6 @@ const Checkout: React.FC = () => {
         const data = await result.json();
         
         if (!data || !data.id) {
-          try { await deleteOrder(order.id); } catch {}
           alert('Server error. Are you online?');
           setLoading(false);
           return;
@@ -142,12 +133,15 @@ const Checkout: React.FC = () => {
                 setLoading(false);
                 navigate('/order-success', { state: { order, paymentMethod } });
               } else {
-                alert('Payment verification failed.');
+                // Money may be captured but unverified — keep for manual check.
+                await addOrder({ ...order, status: OrderStatus.PENDING });
+                alert('Payment doubtful. Note your payment ID and contact support.');
                 setLoading(false);
               }
             } catch (err) {
               console.error(err);
-              alert('Payment verification failed.');
+              await addOrder({ ...order, status: OrderStatus.PENDING });
+              alert('Payment doubtful. Note your payment ID and contact support.');
               setLoading(false);
             }
           },
@@ -163,25 +157,12 @@ const Checkout: React.FC = () => {
 
         const paymentObject = new (window as any).Razorpay(options);
         paymentObject.on('payment.failed', async function (response: any) {
-          try { await deleteOrder(order.id); } catch {}
           alert('Payment Failed: ' + response.error.description);
           setLoading(false);
-        });
-        paymentObject.on('modal.close', async function () {
-          setTimeout(async () => {
-            try {
-              const { getOrder } = await import('../firebase');
-              const savedOrder = await getOrder(order.id);
-              if (savedOrder && savedOrder.status === OrderStatus.PENDING) {
-                await deleteOrder(order.id);
-              }
-            } catch {}
-          }, 2000);
         });
         paymentObject.open();
       } catch (err) {
         console.error(err);
-        try { await deleteOrder(order.id); } catch {}
         alert('Could not initiate payment');
         setLoading(false);
       }
