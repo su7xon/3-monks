@@ -88,6 +88,7 @@ const Checkout: React.FC = () => {
 
       const res = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
       if (!res) {
+        try { await deleteOrder(order.id); } catch {}
         alert('Razorpay SDK failed to load. Are you online?');
         setLoading(false);
         return;
@@ -100,6 +101,7 @@ const Checkout: React.FC = () => {
         });
 
         if (result.status === 429) {
+          try { await deleteOrder(order.id); } catch {}
           alert('Too many attempts. Thodi der ruk ke try karo.');
           setLoading(false);
           return;
@@ -108,6 +110,7 @@ const Checkout: React.FC = () => {
         const data = await result.json();
         
         if (!data || !data.id) {
+          try { await deleteOrder(order.id); } catch {}
           alert('Server error. Are you online?');
           setLoading(false);
           return;
@@ -178,6 +181,7 @@ const Checkout: React.FC = () => {
         paymentObject.open();
       } catch (err) {
         console.error(err);
+        try { await deleteOrder(order.id); } catch {}
         alert('Could not initiate payment');
         setLoading(false);
       }
