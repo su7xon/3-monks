@@ -8,7 +8,14 @@ exports.handler = async (event) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = JSON.parse(event.body);
 
-    const secret = 'dU9TjfiqnqHShbEwCjMfbeKQ';
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret) {
+      console.error('[Razorpay] Missing RAZORPAY_KEY_SECRET env');
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ success: false, message: 'Payment not configured' })
+      };
+    }
 
     
     const hmac = crypto.createHmac('sha256', secret);

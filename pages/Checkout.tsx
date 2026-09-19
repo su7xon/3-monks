@@ -96,8 +96,14 @@ const Checkout: React.FC = () => {
       try {
         const result = await fetch('/.netlify/functions/create-razorpay-order', {
           method: 'POST',
-          body: JSON.stringify({ amount: amountToPay }),
+          body: JSON.stringify({ amount: amountToPay, orderId: order.id }),
         });
+
+        if (result.status === 429) {
+          alert('Too many attempts. Thodi der ruk ke try karo.');
+          setLoading(false);
+          return;
+        }
         
         const data = await result.json();
         
@@ -108,7 +114,7 @@ const Checkout: React.FC = () => {
         }
 
         const options = {
-          key: 'rzp_live_Ssl5rJRZ72IKfZ',
+          key: (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || 'rzp_live_Ssl5rJRZ72IKfZ',
           amount: data.amount,
           currency: data.currency,
           name: 'The III Monks',
