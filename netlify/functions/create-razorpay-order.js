@@ -19,7 +19,7 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { amount, orderId } = body;
+    const { amount, orderId, customer, phone, itemsSummary } = body;
 
     const ip =
       event.headers?.['x-nf-client-connection-ip'] ||
@@ -58,8 +58,9 @@ exports.handler = async (event) => {
       };
     }
 
-    // orderId ties Razorpay receipt to your Firestore pending order (ORD-...).
-    // Lets you trace abuse in Razorpay dashboard via receipt.
+    // orderId ties the Razorpay order back to our client-side order id (ORD-...).
+    // Receipt + notes let the webhook reconcile even if the buyer closes
+    // the browser before verification runs.
     const safeOrderId =
       typeof orderId === 'string' && /^ORD-[0-9]+-[A-Z0-9]{4}$/.test(orderId)
         ? orderId
@@ -78,11 +79,20 @@ exports.handler = async (event) => {
     const Razorpay = require('razorpay');
     const razorpay = new Razorpay({ key_id, key_secret });
 
+    // Notes carry the trace fields the webhook needs to reconcile an order
+    // when the buyer closes the browser before verification runs.
+    const clean = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
     const options = {
       amount: Math.round(num * 100),
       currency: 'INR',
       receipt: safeOrderId ? `${safeOrderId}_${Date.now()}` : `receipt_${Date.now()}`,
-      notes: safeOrderId ? { orderId: safeOrderId, ip } : { ip },
+      notes: {
+        ip,
+        ...(safeOrderId ? { orderId: safeOrderId } : {}),
+        ...(customer ? { customer: clean(customer, 120) } : {}),
+        ...(phone ? { phone: clean(phone, 20) } : {}),
+        ...(itemsSummary ? { items: clean(itemsSummary, 250) } : {}),
+      },
     };
 
     console.log('[Razorpay] Create order:', { ip, amount: num, orderId: safeOrderId });

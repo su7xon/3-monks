@@ -90,7 +90,13 @@ const Checkout: React.FC = () => {
       try {
         const result = await fetch('/.netlify/functions/create-razorpay-order', {
           method: 'POST',
-          body: JSON.stringify({ amount: amountToPay, orderId: order.id }),
+          body: JSON.stringify({
+            amount: amountToPay,
+            orderId: order.id,
+            customer: form.name,
+            phone: form.phone,
+            itemsSummary: cart.map((i) => `${i.name} x${i.quantity}`).join(', '),
+          }),
         });
 
         if (result.status === 429) {
