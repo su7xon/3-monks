@@ -53,6 +53,7 @@ export interface Product {
   variantStock?: { [key: string]: number };
   sizes: string[];
   stock: number;
+  shippingCost?: number;
   barcode?: string;
   variantBarcode?: { [key: string]: string };
   isNew?: boolean;

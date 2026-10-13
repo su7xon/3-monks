@@ -243,12 +243,15 @@ const ProductDetail: React.FC = () => {
                     </svg>
                   </button>
                 </div>
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-4 mb-2">
                   <p className="text-2xl font-bold text-gray-900">₹{product.salePrice || product.price}</p>
                   {product.salePrice && (
                     <p className="text-lg text-gray-400 line-through">₹{product.price}</p>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mb-6">
+                  + ₹{product.shippingCost ?? 99} shipping <span className="text-gray-400">(extra qty pe +₹60)</span>
+                </p>
               </div>
               <div className="relative">
                 <p
@@ -353,7 +356,7 @@ const ProductDetail: React.FC = () => {
                   </>
 
                   <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
-                    Free Worldwide Shipping on all Monks Drops.
+                    Shipping ₹{product.shippingCost ?? 99} on this drop · COD available
                   </p>
                 </div>
               </div>

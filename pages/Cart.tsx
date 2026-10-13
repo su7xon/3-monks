@@ -6,6 +6,10 @@ const Cart: React.FC = () => {
   const { cart, updateQuantity, removeFromCart } = useShop();
 
   const subtotal = cart.reduce((acc, item) => acc + (item.salePrice || item.price) * item.quantity, 0);
+  const EXTRA_SHIPPING = 60;
+  const getItemShipping = (item: { shippingCost?: number; quantity: number }) =>
+    (item.shippingCost ?? 99) + Math.max(0, item.quantity - 1) * EXTRA_SHIPPING;
+  const estimatedShipping = cart.reduce((acc, item) => acc + getItemShipping(item), 0);
 
   if (cart.length === 0) {
     return (
@@ -59,7 +63,8 @@ const Cart: React.FC = () => {
                       >+</button>
                     </div>
                     <p className="text-lg md:text-xl font-bold text-[#e60000]">₹{(item.salePrice || item.price) * item.quantity}</p>
-                  </div>
+                    </div>
+                    <p className="text-[10px] md:text-xs text-gray-400 mt-1 uppercase tracking-wider">+ ₹{getItemShipping(item)} shipping (COD pe)</p>
                 </div>
               </div>
             ))}
@@ -75,7 +80,7 @@ const Cart: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider">
                   <span>Shipping</span>
-                  <span className="text-black">Calculated at next step</span>
+                  <span className="text-black">₹{estimatedShipping} (COD pe)</span>
                 </div>
                 <div className="pt-4 border-t border-gray-200 flex justify-between font-black text-lg md:text-xl font-display text-black uppercase tracking-widest">
                   <span>Estimated Total</span>

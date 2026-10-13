@@ -16,6 +16,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['Black', 'Onyx', 'Bone'],
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 25,
+    shippingCost: 99,
     isFeatured: true,
     isNew: true
   },
@@ -31,6 +32,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['White', 'Sand'],
     sizes: ['M', 'L', 'XL'],
     stock: 50,
+    shippingCost: 99,
     isFeatured: true
   },
   {
@@ -44,7 +46,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     ],
     colors: ['Olive', 'Midnight'],
     sizes: ['30', '32', '34'],
-    stock: 12
+    stock: 12,
+    shippingCost: 99
   },
   {
     id: '4',
@@ -58,6 +61,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['Black'],
     sizes: ['One Size'],
     stock: 5,
+    shippingCost: 99,
     isNew: true
   }
 ];

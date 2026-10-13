@@ -31,10 +31,10 @@ const Checkout: React.FC = () => {
   });
 
   const total = cart.reduce((acc, item) => acc + (item.salePrice || item.price) * item.quantity, 0);
-  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const baseShipping = 99;
-  const extraShipping = 60;
-  const computedShipping = totalItems > 0 ? baseShipping + (totalItems - 1) * extraShipping : 0;
+  const EXTRA_SHIPPING = 60;
+  const getItemShipping = (item: { shippingCost?: number; quantity: number }) =>
+    (item.shippingCost ?? 99) + Math.max(0, item.quantity - 1) * EXTRA_SHIPPING;
+  const computedShipping = cart.reduce((acc, item) => acc + getItemShipping(item), 0);
   const shippingCost = paymentMethod === 'cod' ? computedShipping : 0;
   const finalTotal = total + shippingCost;
 
@@ -78,8 +78,12 @@ const Checkout: React.FC = () => {
     const amountToPay = paymentMethod === 'razorpay' ? finalTotal : shippingCost;
 
     if (amountToPay > 0) {
-      // No Firestore write before payment. Pending docs are created only
-      // when verification fails (money possibly captured, needs manual check).
+      // No Firestore write before payment on purpose — window-shoppers who
+      // close Razorpay without paying must NOT create pending spam.
+      // If money gets captured but the browser closes before verification,
+      // the Razorpay webhook (netlify/functions/razorpay-webhook.js) confirms
+      // the order via notes.orderId. Doubtful verifications are saved as
+      // PENDING below for manual check.
       const res = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
       if (!res) {
         alert('Razorpay SDK failed to load. Are you online?');
@@ -158,6 +162,12 @@ const Checkout: React.FC = () => {
           },
           theme: {
             color: '#000000',
+          },
+          modal: {
+            ondismiss: function () {
+              // Closed without paying — no order saved, nothing to reconcile.
+              setLoading(false);
+            },
           },
         };
 
@@ -355,6 +365,7 @@ const Checkout: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-xs md:text-sm uppercase tracking-wide truncate">{item.name}</h3>
                       <p className="text-[10px] md:text-xs text-gray-500 mt-1 uppercase">Size: {item.selectedSize} | Qty: {item.quantity}</p>
+                      <p className="text-[10px] md:text-xs text-gray-400 mt-0.5">Shipping: ₹{getItemShipping(item)} (COD pe)</p>
                       <p className="text-xs md:text-sm font-semibold mt-1 md:mt-2">₹{(item.salePrice || item.price) * item.quantity}</p>
                     </div>
                   </div>

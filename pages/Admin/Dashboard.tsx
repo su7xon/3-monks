@@ -56,6 +56,7 @@ const EMPTY_FORM: Partial<Product> = {
   colors: [],
   sizes: [],
   stock: 0,
+  shippingCost: 99,
   isNew: true,
   isFeatured: false,
   isTopPick: false,
@@ -96,7 +97,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
   useEffect(() => {
     if (isOpen) {
       if (isNew) {
-        setFormData({ ...EMPTY_FORM, id: `prod_${Date.now()}`, barcode: genBarcode(), variantBarcode: {}, colorStock: {}, variantStock: {} });
+        setFormData({ ...EMPTY_FORM, id: `prod_${Date.now()}`, barcode: genBarcode(), variantBarcode: {}, colorStock: {}, variantStock: {}, shippingCost: 99 });
         setNewColor('');
         setNewColorStock('');
         setNewSize('');
@@ -105,6 +106,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         setFormData({
           ...product,
           barcode: product.barcode || genBarcode(),
+          shippingCost: product.shippingCost ?? 99,
           variantBarcode: product.variantBarcode || {},
           colorStock: product.colorStock || {},
           variantStock: product.variantStock || {}
@@ -161,6 +163,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
       variantStock: formData.variantStock || {},
       sizes: formData.sizes || [],
       stock: formData.stock || 0,
+      shippingCost: formData.shippingCost ?? 99,
       barcode: formData.barcode || genBarcode(),
       variantBarcode: ensureVariantBarcodes(),
       isNew: formData.isNew || false,
@@ -342,6 +345,11 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-2 block">Sale Price</label>
               <input type="number" value={formData.salePrice || ''} onChange={(e) => setFormData(prev => ({ ...prev, salePrice: parseInt(e.target.value) || undefined }))} placeholder="Optional" className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-gray-500 mb-2 block">Shipping Cost (₹) — default 99</label>
+              <input type="number" min="0" value={formData.shippingCost ?? 99} onChange={(e) => setFormData(prev => ({ ...prev, shippingCost: parseInt(e.target.value) || 0 }))} placeholder="99" className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" />
+              <p className="text-[10px] text-gray-400 mt-1">First unit pe ye lagega, extra qty pe +₹60. e.g. 120 set kiya to 1 pc = ₹120, 2 pc same = ₹180.</p>
             </div>
           </div>
 
@@ -1527,15 +1535,26 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'orders' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-2">
                 <h2 className="text-base font-bold text-gray-900">Orders ({orders.length}){orders.filter(o => o.status === OrderStatus.PENDING).length > 0 && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-bold">({orders.filter(o => o.status === OrderStatus.PENDING).length})P</span>}</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowPendingOrders(false)} className={`text-xs font-bold px-3 py-1.5 rounded-full ${!showPendingOrders ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    All
+                  </button>
+                  <button onClick={() => setShowPendingOrders(true)} className={`text-xs font-bold px-3 py-1.5 rounded-full ${showPendingOrders ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800'}`}>
+                    ({orders.filter(o => o.status === OrderStatus.PENDING).length})P Pending
+                  </button>
+                </div>
               </div>
 
               {orders.length === 0 ? (
                 <div className="p-12 text-center text-gray-400">No orders yet</div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {orders.map(order => (
+                  {(showPendingOrders ? orders.filter(o => o.status === OrderStatus.PENDING) : orders).length === 0 ? (
+                    <div className="p-12 text-center text-gray-400">No pending orders 🎉</div>
+                  ) : (
+                  (showPendingOrders ? orders.filter(o => o.status === OrderStatus.PENDING) : orders).map(order => (
                     <div key={order.id} className="p-4">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div>
@@ -1628,7 +1647,7 @@ const AdminDashboard: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  )))}
                 </div>
               )}
             </div>
