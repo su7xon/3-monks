@@ -532,9 +532,79 @@ export const verifyAdminPassword = async (inputPassword: string): Promise<boolea
     return inputPassword === storedPassword;
 };
 
+export const findMatchingVariantKey = (
+    variantStock: { [key: string]: number } = {},
+    size?: string,
+    color?: string
+): string | null => {
+    if (!variantStock || Object.keys(variantStock).length === 0) return null;
+
+    const sizeStr = (size || '').trim();
+    const colorStr = (color || '').trim();
+    const colorKey = colorStr || 'Standard';
+
+    // 1. Exact match with color_size: e.g. "Black_M"
+    if (colorStr && sizeStr && variantStock[`${colorStr}_${sizeStr}`] !== undefined) {
+        return `${colorStr}_${sizeStr}`;
+    }
+
+    // 2. Match with Standard_size: e.g. "Standard_M"
+    if (sizeStr && variantStock[`Standard_${sizeStr}`] !== undefined) {
+        return `Standard_${sizeStr}`;
+    }
+
+    // 3. Match with default colorKey_size:
+    if (sizeStr && variantStock[`${colorKey}_${sizeStr}`] !== undefined) {
+        return `${colorKey}_${sizeStr}`;
+    }
+
+    // 4. Exact match with size alone: e.g. "M"
+    if (sizeStr && variantStock[sizeStr] !== undefined) {
+        return sizeStr;
+    }
+
+    // 5. Match with prefixed size: e.g. "_M"
+    if (sizeStr && variantStock[`_${sizeStr}`] !== undefined) {
+        return `_${sizeStr}`;
+    }
+
+    // 6. Case-insensitive search on size or combo
+    if (sizeStr) {
+        const lowerSize = sizeStr.toLowerCase();
+        const lowerCombo = `${colorStr.toLowerCase()}_${lowerSize}`;
+        for (const k of Object.keys(variantStock)) {
+            const kl = k.toLowerCase();
+            if (kl === lowerCombo || kl === lowerSize || kl === `_${lowerSize}` || kl.endsWith(`_${lowerSize}`)) {
+                return k;
+            }
+        }
+    }
+
+    // 7. Fallback: if sizeStr exists, return combo or sizeStr
+    if (sizeStr) {
+        return colorStr ? `${colorStr}_${sizeStr}` : sizeStr;
+    }
+
+    return null;
+};
+
 export const reduceStockForOrder = async (order: Order) => {
     try {
-        const { getDoc, updateDoc, increment } = await import('firebase/firestore');
+        const { getDoc, updateDoc } = await import('firebase/firestore');
+
+        // Prevent duplicate reduction if already processed
+        if (order.id) {
+            try {
+                const orderRef = doc(ordersCollection, order.id);
+                const orderSnap = await getDoc(orderRef);
+                if (orderSnap.exists() && orderSnap.data()?.stockReduced) {
+                    console.log('[Stock] Stock already reduced for order:', order.id);
+                    return;
+                }
+            } catch (e) {
+                console.warn('[Stock] Could not check order stock status:', e);
+            }
+        }
 
         for (const item of order.items) {
             const productRef = doc(productsCollection, item.id);
@@ -542,35 +612,52 @@ export const reduceStockForOrder = async (order: Order) => {
 
             if (productSnap.exists()) {
                 const productData = productSnap.data() as Product;
-                const quantityToReduce = item.quantity;
-                const updates: any = {};
+                const quantityToReduce = Number(item.quantity) || 1;
+                const variantStock = { ...(productData.variantStock || {}) };
+                const colorStock = { ...(productData.colorStock || {}) };
 
-                if (productData.stock >= quantityToReduce) {
-                    updates.stock = increment(-quantityToReduce);
-                } else {
-                    console.warn(`[Stock] Not enough total stock for ${item.name}. Available: ${productData.stock}, Required: ${quantityToReduce}`);
-                    updates.stock = increment(-quantityToReduce);
+                const targetVariantKey = findMatchingVariantKey(variantStock, item.selectedSize, item.selectedColor);
+                if (targetVariantKey && variantStock[targetVariantKey] !== undefined) {
+                    variantStock[targetVariantKey] = Math.max(0, (Number(variantStock[targetVariantKey]) || 0) - quantityToReduce);
                 }
 
-                const variantStock = productData.variantStock || {};
-                const colorStock = productData.colorStock || {};
-                
-                if (item.selectedSize) {
-                    const colorKey = item.selectedColor || 'Standard';
-                    const variantKey = `${colorKey}_${item.selectedSize}`;
-                    variantStock[variantKey] = Math.max(0, (variantStock[variantKey] || 0) - quantityToReduce);
+                if (item.selectedColor && colorStock[item.selectedColor] !== undefined) {
+                    colorStock[item.selectedColor] = Math.max(0, (Number(colorStock[item.selectedColor]) || 0) - quantityToReduce);
+                }
+
+                const hasVariants = Object.keys(variantStock).length > 0;
+                const newTotalStock = hasVariants
+                    ? Object.values(variantStock).reduce((sum: number, v) => sum + (Number(v) || 0), 0)
+                    : Math.max(0, (Number(productData.stock) || 0) - quantityToReduce);
+
+                const updates: any = {
+                    stock: newTotalStock,
+                };
+                if (hasVariants) {
                     updates.variantStock = variantStock;
                 }
-
-                if (item.selectedColor) {
-                    colorStock[item.selectedColor] = Math.max(0, (colorStock[item.selectedColor] || 0) - quantityToReduce);
+                if (Object.keys(colorStock).length > 0) {
                     updates.colorStock = colorStock;
                 }
 
                 await updateDoc(productRef, updates);
-                console.log(`[Stock] Reduced stock for ${item.name} by ${quantityToReduce}`);
+                console.log(`[Stock] Reduced stock for ${item.name} (${targetVariantKey || 'total'}) by ${quantityToReduce}. New stock: ${newTotalStock}`);
             }
         }
+
+        // Mark order doc as stockReduced in Firestore if exists
+        if (order.id) {
+            try {
+                const orderRef = doc(ordersCollection, order.id);
+                const orderSnap = await getDoc(orderRef);
+                if (orderSnap.exists()) {
+                    await updateDoc(orderRef, { stockReduced: true });
+                }
+            } catch (e) {
+                console.warn('[Stock] Could not mark order as stockReduced:', e);
+            }
+        }
+
         console.log('[Stock] Stock reduction complete for order:', order.id);
     } catch (error) {
         console.error('[Stock] Error reducing stock:', error);

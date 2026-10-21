@@ -96,6 +96,7 @@ export interface Order {
     instagramId?: string;
   };
   paymentMethod?: string;
+  stockReduced?: boolean;
 }
 export interface Review {
   id: string;

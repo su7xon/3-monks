@@ -7,6 +7,9 @@ const API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyAH-u3HGlVPYexW4oviSRKXD56
 const fsUrl = (docId) =>
   `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/orders/${encodeURIComponent(docId)}?key=${API_KEY}`;
 
+const fsProdUrl = (docId) =>
+  `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/products/${encodeURIComponent(docId)}?key=${API_KEY}`;
+
 function toFs(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'string') return { stringValue: v };
@@ -48,6 +51,65 @@ async function rzpGet(path) {
   });
   if (!res.ok) throw new Error('Razorpay API ' + res.status);
   return res.json();
+}
+
+async function reduceStockViaRest(items) {
+  for (const item of items) {
+    if (!item.id) continue;
+    try {
+      const g = await fetch(fsProdUrl(item.id));
+      if (!g.ok) continue;
+      const gj = await g.json();
+      if (!gj.fields) continue;
+      const product = fromFs({ mapValue: { fields: gj.fields } });
+      const qty = Number(item.quantity) || 1;
+      const variantStock = { ...(product.variantStock || {}) };
+      const colorStock = { ...(product.colorStock || {}) };
+
+      const sizeStr = (item.selectedSize || '').trim();
+      const colorStr = (item.selectedColor || '').trim();
+      let targetKey = null;
+
+      if (colorStr && sizeStr && variantStock[`${colorStr}_${sizeStr}`] !== undefined) {
+        targetKey = `${colorStr}_${sizeStr}`;
+      } else if (sizeStr && variantStock[`Standard_${sizeStr}`] !== undefined) {
+        targetKey = `Standard_${sizeStr}`;
+      } else if (sizeStr && variantStock[sizeStr] !== undefined) {
+        targetKey = sizeStr;
+      } else if (sizeStr && variantStock[`_${sizeStr}`] !== undefined) {
+        targetKey = `_${sizeStr}`;
+      }
+
+      if (targetKey && variantStock[targetKey] !== undefined) {
+        variantStock[targetKey] = Math.max(0, (Number(variantStock[targetKey]) || 0) - qty);
+      }
+
+      if (colorStr && colorStock[colorStr] !== undefined) {
+        colorStock[colorStr] = Math.max(0, (Number(colorStock[colorStr]) || 0) - qty);
+      }
+
+      const hasVariants = Object.keys(variantStock).length > 0;
+      const newTotal = hasVariants
+        ? Object.values(variantStock).reduce((sum, v) => sum + (Number(v) || 0), 0)
+        : Math.max(0, (Number(product.stock) || 0) - qty);
+
+      const updated = {
+        ...product,
+        stock: newTotal,
+        ...(hasVariants ? { variantStock } : {}),
+        ...(Object.keys(colorStock).length > 0 ? { colorStock } : {}),
+      };
+
+      await fetch(fsProdUrl(item.id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: toFs(updated).mapValue.fields }),
+      });
+      console.log('[Webhook] Reduced stock for:', item.id, targetKey, qty);
+    } catch (e) {
+      console.error('[Webhook] Failed to reduce stock for:', item.id, e.message);
+    }
+  }
 }
 
 exports.handler = async (event) => {
@@ -118,12 +180,24 @@ exports.handler = async (event) => {
       console.error('[Webhook] Firestore GET failed:', e.message);
     }
 
+    let isStockReduced = (existing && existing.stockReduced) === true;
+    const items = (existing && Array.isArray(existing.items) && existing.items.length > 0)
+      ? existing.items
+      : [];
+
+    if (!isStockReduced && items.length > 0) {
+      try {
+        await reduceStockViaRest(items);
+        isStockReduced = true;
+      } catch (err) {
+        console.error('[Webhook] Error reducing stock via REST:', err.message);
+      }
+    }
+
     const doc = {
       id: ordId,
       date: (existing && existing.date) || now,
-      items: (existing && Array.isArray(existing.items) && existing.items.length > 0)
-        ? existing.items
-        : [],
+      items,
       itemsSummary: (existing && existing.itemsSummary) || notes.items || '',
       total: (existing && existing.total) || rupees,
       status: 'Confirmed',
@@ -137,6 +211,7 @@ exports.handler = async (event) => {
       paymentId: pay.id,
       razorpayOrderId: pay.order_id,
       webhookVerified: true,
+      stockReduced: isStockReduced,
     };
 
     const put = await fetch(fsUrl(ordId), {

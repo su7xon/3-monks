@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Product, Order, OrderStatus } from '../../types';
-import { getVariantByBarcode, saveOrder, reduceStockForOrder } from '../../firebase';
+import { getVariantByBarcode, saveOrder } from '../../firebase';
 import { useShop } from '../../store';
 import { useToast } from '../../components/Toast';
 
@@ -11,7 +11,7 @@ interface POSItem {
 }
 
 const POS: React.FC = () => {
-  const { products } = useShop();
+  const { products, reduceStock } = useShop();
   const { showToast } = useToast();
   const [scanInput, setScanInput] = useState('');
   const [cart, setCart] = useState<POSItem[]>([]);
@@ -238,7 +238,7 @@ table{width:100%;border-collapse:collapse;font-size:7px}th{border-top:1px dashed
         paymentMethod: 'POS - Barcode'
       };
       await saveOrder(order);
-      await reduceStockForOrder(order);
+      await reduceStock(order);
       setLastOrder(order); setLastDiscountPct(discountPct); setLastReceived(receivedAmount || total);
       showToast(`Bill done! ${order.id}`, 'success');
       printInvoice(order, discountPct, receivedAmount || total);

@@ -476,14 +476,56 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const reduceStock = useCallback(async (order: Order) => {
     console.log('[Store] Reducing stock for order:', order.id);
     try {
-      const { reduceStockForOrder } = await import('./firebase');
+      const { reduceStockForOrder, findMatchingVariantKey } = await import('./firebase');
       await reduceStockForOrder(order);
-      console.log('[Store] Stock reduced successfully for order:', order.id);
+
+      // Immediately update local React state and localStorage cache
+      setProductsState(prev => {
+        const updated = prev.map(p => {
+          const matchingItems = (order.items || []).filter(i => i.id === p.id);
+          if (matchingItems.length === 0) return p;
+
+          let updatedVariantStock = { ...(p.variantStock || {}) };
+          let updatedColorStock = { ...(p.colorStock || {}) };
+          let totalReduced = 0;
+
+          for (const item of matchingItems) {
+            const qty = Number(item.quantity) || 1;
+            totalReduced += qty;
+
+            const targetKey = findMatchingVariantKey(updatedVariantStock, item.selectedSize, item.selectedColor);
+            if (targetKey && updatedVariantStock[targetKey] !== undefined) {
+              updatedVariantStock[targetKey] = Math.max(0, (Number(updatedVariantStock[targetKey]) || 0) - qty);
+            }
+
+            if (item.selectedColor && updatedColorStock[item.selectedColor] !== undefined) {
+              updatedColorStock[item.selectedColor] = Math.max(0, (Number(updatedColorStock[item.selectedColor]) || 0) - qty);
+            }
+          }
+
+          const hasVariants = Object.keys(updatedVariantStock).length > 0;
+          const newTotalStock = hasVariants
+            ? Object.values(updatedVariantStock).reduce((sum: number, v) => sum + (Number(v) || 0), 0)
+            : Math.max(0, (Number(p.stock) || 0) - totalReduced);
+
+          return {
+            ...p,
+            stock: newTotalStock,
+            variantStock: hasVariants ? updatedVariantStock : p.variantStock,
+            colorStock: Object.keys(updatedColorStock).length > 0 ? updatedColorStock : p.colorStock,
+          };
+        });
+
+        writeCache('iii_monks_products', updated);
+        return updated;
+      });
+
+      console.log('[Store] Stock reduced and local cache/state updated successfully for order:', order.id);
     } catch (error) {
       console.error('[Store] Error reducing stock:', error);
       throw error;
     }
-  }, []);
+  }, [writeCache]);
 
   const addReview = useCallback(async (review: Omit<Review, 'id' | 'status' | 'createdAt'>) => {
     try {
