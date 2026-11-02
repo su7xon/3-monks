@@ -44,42 +44,7 @@ const Header: React.FC = () => {
 
   return (
     <header className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${headerBg} border-b border-gray-100`}>
-      {/* Top Announcement Bar - Scrolling Marquee */}
-      <div className="w-full bg-[#0a0a0a] text-white py-1.5 md:py-2 overflow-hidden flex whitespace-nowrap relative border-b border-neutral-800 select-none">
-        <div 
-          className="animate-marquee flex items-center shrink-0 whitespace-nowrap font-oswald text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium hover:[animation-play-state:paused]"
-          style={{ animationDuration: '60s' }}
-        >
-          {Array(6).fill(null).map((_, i) => (
-            <span key={i} className="mx-6 inline-flex items-center gap-3">
-              <span className="text-[#e60000] font-black">✦</span>
-              <span className="text-white font-bold tracking-widest">CASH ON DELIVERY (COD) WILL BE ACCEPTED AFTER DIWALI</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-300 tracking-wider">FREE EXPRESS SHIPPING ON ALL ORDERS</span>
-            </span>
-          ))}
-        </div>
-        <div 
-          className="animate-marquee flex items-center shrink-0 whitespace-nowrap font-oswald text-[10px] md:text-xs tracking-[0.2em] uppercase font-medium hover:[animation-play-state:paused]" 
-          style={{ animationDuration: '60s' }}
-          aria-hidden="true"
-        >
-          {Array(6).fill(null).map((_, i) => (
-            <span key={i} className="mx-6 inline-flex items-center gap-3">
-              <span className="text-[#e60000] font-black">✦</span>
-              <span className="text-white font-bold tracking-widest">CASH ON DELIVERY (COD) WILL BE ACCEPTED AFTER DIWALI</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-300 tracking-wider">FREE EXPRESS SHIPPING ON ALL ORDERS</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center h-20 md:h-24">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center h-24 md:h-32">
         
         {}
         <div className="flex-1">
@@ -87,9 +52,9 @@ const Header: React.FC = () => {
             <img
               src="/logo.png"
               alt="THE III MONKS"
-              className="h-20 md:h-24 scale-110 origin-left w-auto object-contain transition-all duration-300 hover:opacity-80 mix-blend-multiply translate-y-1 md:translate-y-0"
+              className="h-24 md:h-32 scale-110 origin-left w-auto object-contain transition-all duration-300 hover:opacity-80 mix-blend-multiply translate-y-4 md:translate-y-0"
             />
-            <span className="md:hidden font-oswald font-black text-lg uppercase tracking-tighter ml-1 mt-1 whitespace-nowrap text-black">
+            <span className="md:hidden font-oswald font-black text-lg uppercase tracking-tighter ml-1 mt-2 whitespace-nowrap text-black">
               THE 3 MONKS
             </span>
           </Link>
@@ -161,7 +126,7 @@ const Header: React.FC = () => {
       </div>
 
       {}
-      <div className={`md:hidden fixed inset-0 top-full bg-white z-40 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`md:hidden fixed inset-0 top-20 bg-white z-40 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <nav className="flex flex-col p-8 space-y-8">
           {[
             { name: 'Home', path: '/' },
