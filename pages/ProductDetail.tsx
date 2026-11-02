@@ -249,8 +249,8 @@ const ProductDetail: React.FC = () => {
                     <p className="text-lg text-gray-400 line-through">₹{product.price}</p>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mb-6">
-                  + ₹{product.shippingCost ?? 99} shipping <span className="text-gray-400">(extra qty pe +₹60)</span>
+                <p className="text-xs text-green-600 font-semibold mb-6">
+                  FREE SHIPPING
                 </p>
               </div>
               <div className="relative">
@@ -356,7 +356,7 @@ const ProductDetail: React.FC = () => {
                   </>
 
                   <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
-                    Shipping ₹{product.shippingCost ?? 99} on this drop · COD Accepted After Diwali
+                    Free Shipping on this drop · COD Accepted After Diwali
                   </p>
                 </div>
               </div>

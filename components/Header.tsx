@@ -57,7 +57,7 @@ const Header: React.FC = () => {
               <span className="text-gray-500">•</span>
               <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
               <span className="text-gray-500">•</span>
-              <span className="text-gray-300 tracking-wider">ONLINE ORDERS ONLY</span>
+              <span className="text-green-400 font-semibold tracking-wider">FREE SHIPPING ON ALL ORDERS</span>
             </span>
           ))}
         </div>
@@ -73,7 +73,7 @@ const Header: React.FC = () => {
               <span className="text-gray-500">•</span>
               <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
               <span className="text-gray-500">•</span>
-              <span className="text-gray-300 tracking-wider">ONLINE ORDERS ONLY</span>
+              <span className="text-green-400 font-semibold tracking-wider">FREE SHIPPING ON ALL ORDERS</span>
             </span>
           ))}
         </div>

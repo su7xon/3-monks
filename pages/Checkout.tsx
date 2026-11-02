@@ -35,7 +35,7 @@ const Checkout: React.FC = () => {
   const getItemShipping = (item: { shippingCost?: number; quantity: number }) =>
     (item.shippingCost ?? 99) + Math.max(0, item.quantity - 1) * EXTRA_SHIPPING;
   const computedShipping = cart.reduce((acc, item) => acc + getItemShipping(item), 0);
-  const shippingCost = computedShipping;
+  const shippingCost = 0;
   const finalTotal = total + shippingCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -358,7 +358,7 @@ const Checkout: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-xs md:text-sm uppercase tracking-wide truncate">{item.name}</h3>
                       <p className="text-[10px] md:text-xs text-gray-500 mt-1 uppercase">Size: {item.selectedSize} | Qty: {item.quantity}</p>
-                      <p className="text-[10px] md:text-xs text-gray-400 mt-0.5">Shipping: ₹{getItemShipping(item)}</p>
+                      <p className="text-[10px] md:text-xs text-green-600 font-semibold mt-0.5">Free Shipping</p>
                       <p className="text-xs md:text-sm font-semibold mt-1 md:mt-2">₹{(item.salePrice || item.price) * item.quantity}</p>
                     </div>
                   </div>
@@ -372,7 +372,7 @@ const Checkout: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-xs md:text-sm uppercase tracking-wide text-gray-600">
                   <span>Shipping</span>
-                  <span className="text-black font-bold">₹{shippingCost}</span>
+                  <span className="text-green-600 font-bold">FREE</span>
                 </div>
                 <div className="flex justify-between text-base md:text-lg font-bold uppercase tracking-wide pt-3 border-t border-gray-200 mt-3">
                   <span>Total</span>

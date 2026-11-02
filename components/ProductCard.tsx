@@ -80,8 +80,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           )}
         </div>
-        <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
-          + ₹{product.shippingCost ?? 99} shipping
+        <p className="text-[10px] text-green-600 font-semibold mt-1 uppercase tracking-wider">
+          Free Shipping
         </p>
       </div>
     </Link>

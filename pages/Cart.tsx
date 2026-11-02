@@ -64,7 +64,7 @@ const Cart: React.FC = () => {
                     </div>
                     <p className="text-lg md:text-xl font-bold text-[#e60000]">₹{(item.salePrice || item.price) * item.quantity}</p>
                     </div>
-                    <p className="text-[10px] md:text-xs text-gray-400 mt-1 uppercase tracking-wider">+ ₹{getItemShipping(item)} shipping (COD pe)</p>
+                    <p className="text-[10px] md:text-xs text-green-600 font-semibold mt-1 uppercase tracking-wider">Free Shipping</p>
                 </div>
               </div>
             ))}
@@ -80,7 +80,7 @@ const Cart: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-gray-500 text-xs md:text-sm font-bold uppercase tracking-wider">
                   <span>Shipping</span>
-                  <span className="text-black">₹{estimatedShipping} (COD pe)</span>
+                  <span className="text-green-600 font-bold">FREE</span>
                 </div>
                 <div className="pt-4 border-t border-gray-200 flex justify-between font-black text-lg md:text-xl font-display text-black uppercase tracking-widest">
                   <span>Estimated Total</span>
