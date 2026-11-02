@@ -179,7 +179,7 @@ const ProductDetail: React.FC = () => {
     .slice(0, 4);
 
   return (
-    <div className="pt-20 md:pt-24 pb-10 md:pb-16 bg-white min-h-screen text-gray-900">
+    <div className="pt-28 md:pt-36 pb-10 md:pb-16 bg-white min-h-screen text-gray-900">
       <div className="max-w-6xl mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 animate-fade-in">
           <div className="space-y-3 md:space-y-4">
@@ -355,8 +355,8 @@ const ProductDetail: React.FC = () => {
                     </button>
                   </>
 
-                  <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
-                    Shipping ₹{product.shippingCost ?? 99} on this drop · COD available
+                  <p className="text-center text-[10px] text-gray-500 uppercase tracking-widest">
+                    Prepaid Orders Only · COD Accepted After Diwali · Free Express Shipping
                   </p>
                 </div>
               </div>
