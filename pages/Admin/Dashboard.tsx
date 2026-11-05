@@ -7,7 +7,7 @@ import imageCompression from 'browser-image-compression';
 import AnalyticsTab from './AnalyticsTab';
 import JsBarcode from 'jsbarcode';
 import { QRCodeSVG } from 'qrcode.react';
-import { notificationPermission, requestNotificationPermission } from '../../utils/orderNotifications';
+import { notificationPermission, requestNotificationPermission, notificationsSupported, notifyNewOrder } from '../../utils/orderNotifications';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -1360,6 +1360,30 @@ const AdminDashboard: React.FC = () => {
             Browser notifications are blocked for this site. Click the lock icon in the address bar, allow Notifications, then reload this page. Order alerts will still play a sound while this tab is open.
           </div>
         )}
+
+        {notificationState === 'default' && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-900">
+            Alerts are not enabled yet. Click <strong>Enable Alerts</strong> above and choose <strong>Allow</strong> in the browser prompt. Sound alerts already work without this.
+          </div>
+        )}
+
+        <div className="mb-6 bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs text-gray-600">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>Notification API: <strong>{notificationsSupported() ? 'supported' : 'NOT supported'}</strong></span>
+            <span>Permission: <strong>{notificationState}</strong></span>
+            <span>Secure context: <strong>{typeof window !== 'undefined' && window.isSecureContext ? 'yes' : 'no'}</strong></span>
+            <span>Host: <strong>{typeof window !== 'undefined' ? window.location.hostname : '-'}</strong></span>
+            <button
+              onClick={() => notifyNewOrder({ id: 'TEST', total: 1234, customerName: 'Test Customer', itemCount: 2 })}
+              className="px-3 py-1.5 bg-gray-900 text-white rounded-lg font-semibold"
+            >
+              Send test alert
+            </button>
+          </div>
+          {notificationState === 'granted' && (
+            <p className="mt-2 text-gray-500">If the test alert produces no popup, check Windows Settings &gt; System &gt; Notifications and turn off Do Not Disturb / Focus Assist.</p>
+          )}
+        </div>
 
         {notificationState === 'unsupported' && (
           <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">

@@ -84,14 +84,15 @@ export const notifyNewOrder = (order: NewOrderInfo) => {
 
   if (notificationPermission() !== 'granted') return;
 
+  const body = `${order.customerName || 'Customer'} • ${inr(order.total)} • ${order.itemCount} item${order.itemCount === 1 ? '' : 's'}`;
+
   try {
-    const body = `${order.customerName || 'Customer'} • ${inr(order.total)} • ${order.itemCount} item${order.itemCount === 1 ? '' : 's'}`;
     const n = new Notification(`New order ${order.id}`, {
       body,
       tag: order.id,
-      requireInteraction: true,
       icon: '/logo.png',
       badge: '/logo.png',
+      silent: true,
     } as NotificationOptions);
     n.onclick = () => {
       window.focus();
@@ -100,5 +101,21 @@ export const notifyNewOrder = (order: NewOrderInfo) => {
       }
       n.close();
     };
+    return;
+  } catch {}
+
+  try {
+    const sw = (navigator as any).serviceWorker;
+    if (sw?.ready) {
+      sw.ready.then((reg: any) =>
+        reg.showNotification(`New order ${order.id}`, {
+          body,
+          tag: order.id,
+          icon: '/logo.png',
+          badge: '/logo.png',
+          silent: true,
+        })
+      );
+    }
   } catch {}
 };
