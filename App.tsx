@@ -13,7 +13,9 @@ import OrderSuccess from './pages/OrderSuccess';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import ReturnPolicy from './pages/ReturnPolicy';
-import CopyrightNotice from './components/CopyrightNotice';
+import AdminDashboard from './pages/Admin/Dashboard';
+import POS from './pages/Admin/POS';
+import StockManager from './pages/Admin/StockManager';
 import Giveaway from './pages/Giveaway';
 import { ToastProvider } from './components/Toast';
 
@@ -122,7 +124,7 @@ const MainLayout = () => {
     <>
       <ScrollToTop />
       <div className="min-h-screen flex flex-col bg-ink text-white selection:bg-neutral-800 selection:text-white">
-        {!pathname.startsWith('/admin') && <Header />}
+        <Header />
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -134,13 +136,14 @@ const MainLayout = () => {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/giveaway" element={<Giveaway />} />
-            <Route path="/admin" element={<div className="pt-24 md:pt-32 pb-12 md:pb-16 bg-gray-50 min-h-screen flex items-start justify-center px-3 sm:px-4"><div className="w-full max-w-3xl"><CopyrightNotice /></div></div>} />
-            <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/pos" element={<POS />} />
+            <Route path="/admin/stock/:productId" element={<StockManager />} />
             <Route path="/policy" element={<ReturnPolicy />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        {!pathname.startsWith('/admin') && <ConditionalFooter />}
+        <ConditionalFooter />
       </div>
     </>
   );
