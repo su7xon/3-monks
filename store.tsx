@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Product, CartItem, Order, OrderStatus, CategoryWithImage, SiteConfig, Story, Review, GiveawayEntry } from './types';
+import { findNewOrders, markOrdersSeen, notifyNewOrder } from './utils/orderNotifications';
 import {
   saveProduct,
   deleteProduct,
@@ -239,9 +240,28 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubs: (() => void)[] = [];
 
     if (isAdmin) {
+      let hasSeenInitialSnapshot = false;
       unsubs.push(subscribeToOrders((data) => {
         console.log('[Store] Orders received:', data.length);
         setOrders(data);
+
+        const simplified = data.map(o => ({
+          id: o.id,
+          total: o.total,
+          customerName: o.customer?.name || '',
+          itemCount: o.items?.length || 0,
+        }));
+
+        if (!hasSeenInitialSnapshot) {
+          hasSeenInitialSnapshot = true;
+          markOrdersSeen(simplified.map(o => o.id));
+          return;
+        }
+
+        const fresh = findNewOrders(simplified);
+        if (fresh.length === 0) return;
+        markOrdersSeen(fresh.map(o => o.id));
+        fresh.forEach(notifyNewOrder);
       }));
       unsubs.push(subscribeToGiveawayEntries((data) => {
         console.log('[Store] Giveaway entries received:', data.length);

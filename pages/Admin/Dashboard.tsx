@@ -7,6 +7,7 @@ import imageCompression from 'browser-image-compression';
 import AnalyticsTab from './AnalyticsTab';
 import JsBarcode from 'jsbarcode';
 import { QRCodeSVG } from 'qrcode.react';
+import { notificationPermission, requestNotificationPermission } from '../../utils/orderNotifications';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -1025,6 +1026,21 @@ const AdminDashboard: React.FC = () => {
     setGiveawayEnabled
   } = useShop();
   const { showToast } = useToast();
+
+  const [notificationState, setNotificationState] = useState<string>(() => notificationPermission());
+
+  const handleEnableNotifications = async () => {
+    const result = await requestNotificationPermission();
+    setNotificationState(result);
+    if (result === 'granted') {
+      showToast('Order alerts enabled', 'success');
+      try {
+        new Notification('Alerts are on', { body: 'You will be notified when a new order arrives.' });
+      } catch {}
+    } else if (result === 'denied') {
+      showToast('Notifications blocked in browser settings', 'error');
+    }
+  };
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'orders' | 'config' | 'reviews' | 'giveaway' | 'analytics'>(() => {
     return (localStorage.getItem('adminTab') as any) || 'products';
   });
@@ -1328,8 +1344,28 @@ const AdminDashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-sm text-gray-500 mt-1">Manage your store</p>
           </div>
-          <a href="/admin/pos" className="shrink-0 px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">🧾 Billing →</a>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleEnableNotifications}
+              className={`px-4 py-3 rounded-xl text-sm font-bold shadow transition-colors ${notificationState === 'granted' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-100'}`}
+            >
+              {notificationState === 'granted' ? '🔔 Alerts On' : notificationState === 'denied' ? '🔔 Alerts Blocked' : '🔔 Enable Alerts'}
+            </button>
+            <a href="/admin/pos" className="px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">🧾 Billing →</a>
+          </div>
         </div>
+
+        {notificationState === 'denied' && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
+            Browser notifications are blocked for this site. Click the lock icon in the address bar, allow Notifications, then reload this page. Order alerts will still play a sound while this tab is open.
+          </div>
+        )}
+
+        {notificationState === 'unsupported' && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
+            This browser does not support desktop notifications. New-order sound alerts will still play while this tab is open.
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {stats.map((stat, idx) => (
