@@ -1038,7 +1038,9 @@ const AdminDashboard: React.FC = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; type: string; id: string; name: string }>({ isOpen: false, type: '', id: '', name: '' });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('adminAuth') === 'true';
+  });
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -1053,7 +1055,26 @@ const AdminDashboard: React.FC = () => {
   }, [activeTab]);
 
   const handleLogin = async () => {
-    setLoginError('Access disabled. Contact the site owner.');
+    if (!loginPassword.trim()) {
+      setLoginError('Please enter password');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      const { verifyAdminPassword } = await import('../../firebase');
+      const isValid = await verifyAdminPassword(loginPassword);
+      if (isValid) {
+        setIsAuthenticated(true);
+        localStorage.setItem('adminAuth', 'true');
+      } else {
+        setLoginError('Incorrect password');
+      }
+    } catch (error) {
+      setLoginError('Error verifying password');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -1088,7 +1109,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    localStorage.removeItem('adminAuth');
+    if (localStorage.getItem('adminAuth') === 'true') {
+      setIsAuthenticated(true);
+    }
   }, []);
 
   if (!isAuthenticated) {
@@ -1097,25 +1120,26 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl p-8 border border-gray-200 max-w-sm w-full">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Login</h1>
-            <p className="text-sm text-gray-500">Access is temporarily unavailable</p>
+            <p className="text-sm text-gray-500">Enter password to access the dashboard</p>
           </div>
           <div className="space-y-4">
             <div>
               <input
                 type="password"
-                disabled
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                 placeholder="Enter password"
-                className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none bg-gray-50 text-gray-400 cursor-not-allowed"
+                className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900"
               />
               {loginError && <p className="text-red-500 text-sm mt-2">{loginError}</p>}
             </div>
             <button
-              disabled
-              className="w-full bg-gray-900 text-white py-3 text-sm font-bold rounded-lg opacity-50 cursor-not-allowed"
+              onClick={handleLogin}
+              disabled={isLoggingIn}
+              className="w-full bg-gray-900 text-white py-3 text-sm font-bold rounded-lg disabled:opacity-50"
             >
-              Login
+              {isLoggingIn ? 'Verifying...' : 'Login'}
             </button>
           </div>
         </div>
