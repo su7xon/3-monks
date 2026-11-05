@@ -8,6 +8,20 @@ export type NewOrderInfo = {
 const STORAGE_KEY = 'iii_monks_seen_order_ids';
 const MAX_SEEN = 400;
 
+export const swSupported = (): boolean =>
+  typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+
+export const registerNotificationWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+  if (!swSupported()) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
+    return reg;
+  } catch {
+    return null;
+  }
+};
+
 export const notificationsSupported = (): boolean =>
   typeof window !== 'undefined' && 'Notification' in window;
 
@@ -18,6 +32,7 @@ export const notificationPermission = (): NotificationPermission | 'unsupported'
 
 export const requestNotificationPermission = async (): Promise<NotificationPermission | 'unsupported'> => {
   if (!notificationsSupported()) return 'unsupported';
+  await registerNotificationWorker();
   if (Notification.permission === 'granted') return 'granted';
   try {
     return await Notification.requestPermission();
@@ -79,43 +94,50 @@ const playBeep = () => {
 const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
+const showViaServiceWorker = async (title: string, body: string, tag: string): Promise<boolean> => {
+  if (!swSupported()) return false;
+  try {
+    await registerNotificationWorker();
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg || typeof reg.showNotification !== 'function') return false;
+    await reg.showNotification(title, {
+      body,
+      tag,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      data: { url: '/admin' },
+    } as NotificationOptions);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const notifyNewOrder = (order: NewOrderInfo) => {
   playBeep();
 
   if (notificationPermission() !== 'granted') return;
 
+  const title = `New order ${order.id}`;
   const body = `${order.customerName || 'Customer'} • ${inr(order.total)} • ${order.itemCount} item${order.itemCount === 1 ? '' : 's'}`;
 
-  try {
-    const n = new Notification(`New order ${order.id}`, {
-      body,
-      tag: order.id,
-      icon: '/logo.png',
-      badge: '/logo.png',
-      silent: true,
-    } as NotificationOptions);
-    n.onclick = () => {
-      window.focus();
-      if (!window.location.pathname.startsWith('/admin')) {
-        window.location.href = '/admin';
-      }
-      n.close();
-    };
-    return;
-  } catch {}
-
-  try {
-    const sw = (navigator as any).serviceWorker;
-    if (sw?.ready) {
-      sw.ready.then((reg: any) =>
-        reg.showNotification(`New order ${order.id}`, {
-          body,
-          tag: order.id,
-          icon: '/logo.png',
-          badge: '/logo.png',
-          silent: true,
-        })
-      );
-    }
-  } catch {}
+  showViaServiceWorker(title, body, order.id).then((shown) => {
+    if (shown) return;
+    try {
+      const n = new Notification(title, {
+        body,
+        tag: order.id,
+        icon: '/logo.png',
+        badge: '/logo.png',
+        silent: true,
+      } as NotificationOptions);
+      n.onclick = () => {
+        window.focus();
+        if (!window.location.pathname.startsWith('/admin')) {
+          window.location.href = '/admin';
+        }
+        n.close();
+      };
+    } catch {}
+  });
 };
