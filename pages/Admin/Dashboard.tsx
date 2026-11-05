@@ -268,7 +268,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[70] flex items-end md:items-center justify-center p-4 pt-28 md:pt-36 pb-6" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl text-black" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto overscroll-contain shadow-2xl text-black" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h2 className="text-lg font-bold text-gray-900">
             {isNew ? 'Add New Product' : 'Edit Product'}
@@ -283,10 +283,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, isNew, onC
         <form onSubmit={handleSubmit} className="p-4 space-y-5">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-2 block">Product Images</label>
-            <div className="flex gap-2 flex-wrap mb-3">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-3 max-h-52 overflow-y-auto overscroll-contain">
               {formData.images?.map((img, idx) => (
                 <div key={idx} className="relative">
-                  <img src={img} className="w-16 h-16 object-cover rounded-lg border" alt="" />
+                  <img src={img} className="w-full aspect-square object-cover rounded-lg border" alt="" loading="lazy" />
                   <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">×</button>
                 </div>
               ))}
