@@ -67,33 +67,46 @@ const ConditionalFooter = () => {
 
 const MaintenanceScreen = () => {
   return (
-    <div className="min-h-screen bg-ink flex flex-col items-center justify-center p-6 text-center relative overflow-hidden selection:bg-neutral-800 selection:text-white">
-      {}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] md:w-[40vw] md:h-[40vw] max-w-[600px] max-h-[600px] bg-white/5 rounded-full blur-[80px] md:blur-[120px] opacity-60 pointer-events-none" />
-      
-      <div className="relative z-10 max-w-lg w-full">
-        {}
-        <div className="w-20 h-20 md:w-24 md:h-24 bg-white/5 rounded-full mx-auto mb-8 flex items-center justify-center backdrop-blur-md border border-white/10 shadow-2xl">
-          <svg className="w-10 h-10 md:w-12 md:h-12 text-white opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
+    <div className="min-h-screen bg-[#202124] text-white flex items-start justify-center pt-[15vh] md:pt-[17vh] px-6 md:px-10 selection:bg-neutral-700">
+      <div className="w-full max-w-[680px] text-left">
+        <svg className="w-[120px] h-[120px] md:w-[140px] md:h-[140px] mb-8 md:mb-10" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="cloudTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e8eaed" />
+              <stop offset="100%" stopColor="#9aa0a6" />
+            </linearGradient>
+            <linearGradient id="cloudSide" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#bdc1c6" />
+              <stop offset="100%" stopColor="#5f6368" />
+            </linearGradient>
+          </defs>
+          <ellipse cx="62" cy="128" rx="12" ry="10" fill="#5f6368" />
+          <ellipse cx="88" cy="124" rx="9" ry="8" fill="#80868b" />
+          <ellipse cx="72" cy="140" rx="7" ry="6" fill="#5f6368" />
+          <path d="M38 78c-11 0-20-9-20-20s9-20 20-20c3 0 6 .6 8.5 1.8C52 26 68 17 86 17c25 0 46 20 46 45 0 1.5-.1 3-.3 4.5C143 69 152 79 152 92c0 14-11 25-25 25H48c-15 0-27-12-27-27 0-6 2-11 5-15-1.5-2.5-2.5-5.5-2.5-8.5 0 4 5.5 7.5 14.5 9z" fill="url(#cloudTop)" fillOpacity="0.55" />
+          <path d="M33 88h94c12 0 21 9 21 21s-9 21-21 21H40c-13 0-23-10-23-23 0-8 4-15 10-19z" fill="url(#cloudSide)" fillOpacity="0.75" />
+          <circle cx="52" cy="100" r="4.2" fill="#202124" />
+          <circle cx="70" cy="100" r="4.2" fill="#202124" />
+          <circle cx="88" cy="100" r="4.2" fill="#202124" />
+        </svg>
 
-        <h1 className="text-3xl md:text-5xl font-light tracking-tight text-white mb-5 drop-shadow-sm px-4">
-          Stepping Up.
+        <h1 className="text-[26px] md:text-[34px] font-normal leading-snug mb-5">
+          Hmmm... can't reach this page
         </h1>
-        
-        <p className="text-gray-400 text-sm md:text-base mb-10 leading-relaxed font-light px-2 md:px-8">
-          III Monks is currently undergoing scheduled maintenance to elevate your premium streetwear experience. We are optimizing our servers and will be right back.
+
+        <p className="text-[14px] md:text-[15px] text-[#e8eaed] mb-4">
+          Check if there is a typo in{' '}
+          <span className="font-semibold">{typeof window !== 'undefined' ? window.location.hostname : 'www.monks.com'}</span>.
         </p>
 
-        <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-5 py-2.5 md:px-6 md:py-3 text-xs md:text-sm text-gray-300 font-medium tracking-wide">
-          <span className="relative flex h-2.5 w-2.5 md:h-3 md:w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-40"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 md:h-3 md:w-3 bg-white opacity-75"></span>
-          </span>
-          Maintenance in progress
-        </div>
+        <p className="text-[12px] text-[#9aa0a6] mb-7 tracking-wide">DNS_PROBE_FINISHED_NXDOMAIN</p>
+
+        <button
+          onClick={() => window.location.reload()}
+          className="px-5 py-2.5 bg-[#8ab4f8] text-[#202124] text-[14px] font-medium rounded hover:bg-[#aecbfa] transition-colors"
+        >
+          Refresh
+        </button>
       </div>
     </div>
   );
@@ -101,7 +114,7 @@ const MaintenanceScreen = () => {
 
 const MainLayout = () => {
   const { pathname } = useLocation();
-  const isMaintenanceMode = false; 
+  const isMaintenanceMode = true; 
 
   if (isMaintenanceMode && !pathname.startsWith('/admin')) {
     return <MaintenanceScreen />;
