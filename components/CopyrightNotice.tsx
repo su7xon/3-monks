@@ -2,7 +2,7 @@ import React from 'react';
 
 const OWNER = 'III Monks Lifestyle';
 const BRAND = 'THE III MONKS';
-const DOMAIN = 'www.3monkslifestyle.com';
+const DOMAIN = 'www.monks.com';
 const YEAR = new Date().getFullYear();
 
 const CopyrightNotice: React.FC = () => {
