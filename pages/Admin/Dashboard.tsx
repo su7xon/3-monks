@@ -7,6 +7,7 @@ import imageCompression from 'browser-image-compression';
 import AnalyticsTab from './AnalyticsTab';
 import JsBarcode from 'jsbarcode';
 import { QRCodeSVG } from 'qrcode.react';
+import CopyrightNotice from '../../components/CopyrightNotice';
 
 const ConfirmDialog: React.FC<{
   isOpen: boolean;
@@ -1116,32 +1117,9 @@ const AdminDashboard: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="pt-20 pb-10 bg-gray-50 min-h-screen flex items-center justify-center px-4 text-black">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Login</h1>
-            <p className="text-sm text-gray-500">Enter password to access the dashboard</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Enter password"
-                className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900"
-              />
-              {loginError && <p className="text-red-500 text-sm mt-2">{loginError}</p>}
-            </div>
-            <button
-              onClick={handleLogin}
-              disabled={isLoggingIn}
-              className="w-full bg-gray-900 text-white py-3 text-sm font-bold rounded-lg disabled:opacity-50"
-            >
-              {isLoggingIn ? 'Verifying...' : 'Login'}
-            </button>
-          </div>
+      <div className="pt-24 md:pt-32 pb-12 md:pb-16 bg-gray-50 min-h-screen flex items-start justify-center px-3 sm:px-4">
+        <div className="w-full max-w-3xl">
+          <CopyrightNotice />
         </div>
       </div>
     );
@@ -1329,6 +1307,10 @@ const AdminDashboard: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">Manage your store</p>
           </div>
           <a href="/admin/pos" className="shrink-0 px-5 py-3 bg-gray-900 text-white rounded-xl text-sm font-bold shadow hover:bg-black">🧾 Billing →</a>
+        </div>
+
+        <div className="mb-6">
+          <CopyrightNotice />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
