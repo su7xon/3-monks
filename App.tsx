@@ -114,7 +114,7 @@ const MaintenanceScreen = () => {
 
 const MainLayout = () => {
   const { pathname } = useLocation();
-  const isMaintenanceMode = true; 
+  const isMaintenanceMode = false; 
 
   if (isMaintenanceMode && !pathname.startsWith('/admin')) {
     return <MaintenanceScreen />;
