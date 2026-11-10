@@ -11,7 +11,7 @@ const ProductDetail: React.FC = () => {
   const { slug } = useParams();
   const id = slug?.split('-').pop();
   const navigate = useNavigate();
-  const { products, addToCart, isLoading } = useShop();
+  const { products, addToCart, isLoading, codEnabled } = useShop();
   const { showToast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
@@ -355,9 +355,11 @@ const ProductDetail: React.FC = () => {
                     </button>
                   </>
 
-                  <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
-                    Free Shipping on this drop · COD Accepted After Diwali
-                  </p>
+                  {codEnabled && (
+                    <p className="text-center text-[10px] text-gray-400 uppercase tracking-widest">
+                      COD Available · Pay shipping upfront
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

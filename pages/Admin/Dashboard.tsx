@@ -1023,7 +1023,9 @@ const AdminDashboard: React.FC = () => {
     addGiveawayEntry,
     deleteGiveawayEntry,
     giveawayEnabled,
-    setGiveawayEnabled
+    setGiveawayEnabled,
+    codEnabled,
+    setCODEnabled
   } = useShop();
   const { showToast } = useToast();
 
@@ -1966,6 +1968,26 @@ const AdminDashboard: React.FC = () => {
                   <div>
                     <label className="text-xs font-medium text-gray-500 mb-1 block">Address</label>
                     <input type="text" value={configForm.contactAddress} onChange={(e) => setConfigForm(prev => ({ ...prev, contactAddress: e.target.value }))} className="w-full border border-gray-200 px-4 py-3 text-base rounded-lg outline-none focus:border-gray-900" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-6">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Payment Settings</h3>
+                <div className="space-y-3">
+                  <div className="bg-white rounded-xl p-4 border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm">Cash on Delivery (COD)</h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {codEnabled ? 'COD is live — customers can pay on delivery (shipping paid upfront)' : 'COD is hidden — only prepaid orders accepted'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCODEnabled(!codEnabled)}
+                      className={`relative w-14 h-7 rounded-full transition-all ${codEnabled ? 'bg-gray-900' : 'bg-gray-300'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-all ${codEnabled ? 'translate-x-7' : ''}`} />
+                    </button>
                   </div>
                 </div>
               </div>

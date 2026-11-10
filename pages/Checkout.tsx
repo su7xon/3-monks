@@ -35,7 +35,7 @@ const Checkout: React.FC = () => {
   const getItemShipping = (item: { shippingCost?: number; quantity: number }) =>
     (item.shippingCost ?? 99) + Math.max(0, item.quantity - 1) * EXTRA_SHIPPING;
   const computedShipping = cart.reduce((acc, item) => acc + getItemShipping(item), 0);
-  const shippingCost = 0;
+  const shippingCost = computedShipping;
   const finalTotal = total + shippingCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,20 +320,27 @@ const Checkout: React.FC = () => {
                     </div>
                   </label>
 
-                  <div className="border border-dashed border-gray-300 bg-gray-50/70 p-3.5 md:p-4 rounded-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
-                      <span className="font-oswald font-semibold uppercase tracking-wider text-xs md:text-sm text-gray-500 line-through">
-                        Cash on Delivery (COD)
-                      </span>
-                      <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                        Temporarily Closed
-                      </span>
+                  <label
+                    className={`block cursor-pointer border-2 transition-all duration-200 p-3 md:p-4 rounded-sm ${paymentMethod === 'cod' ? 'border-black bg-gray-50' : 'border-gray-300 bg-gray-50/70'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 border-2 rounded-full flex items-center justify-center transition-all">
+                        <div className={`w-2 h-2 bg-black rounded-full ${paymentMethod === 'cod' ? 'opacity-100' : 'opacity-0'} ${paymentMethod !== 'cod' ? 'border-gray-300' : 'border-black'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-oswald font-semibold uppercase tracking-wider text-xs md:text-sm">Cash on Delivery (COD)</span>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Pay shipping now, pay the rest on delivery</p>
+                      </div>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                        className="hidden"
+                      />
                     </div>
-                    <p className="text-[11px] md:text-xs text-gray-500 mt-1.5 leading-relaxed">
-                      Cash on Delivery will be accepted <strong className="text-black font-semibold">after Diwali</strong>. Currently only prepaid orders are being accepted.
-                    </p>
-                  </div>
+                  </label>
                 </div>
               </div>
             </form>
@@ -358,7 +365,7 @@ const Checkout: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-xs md:text-sm uppercase tracking-wide truncate">{item.name}</h3>
                       <p className="text-[10px] md:text-xs text-gray-500 mt-1 uppercase">Size: {item.selectedSize} | Qty: {item.quantity}</p>
-                      <p className="text-[10px] md:text-xs text-green-600 font-semibold mt-0.5">Free Shipping</p>
+                      <p className="text-[10px] md:text-xs text-gray-600 font-semibold mt-0.5">Shipping: ₹{getItemShipping(item)}</p>
                       <p className="text-xs md:text-sm font-semibold mt-1 md:mt-2">₹{(item.salePrice || item.price) * item.quantity}</p>
                     </div>
                   </div>
@@ -372,7 +379,9 @@ const Checkout: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-xs md:text-sm uppercase tracking-wide text-gray-600">
                   <span>Shipping</span>
-                  <span className="text-green-600 font-bold">FREE</span>
+                  <span className={computedShipping === 0 ? 'text-green-600 font-bold' : 'text-gray-600 font-bold'}>
+                    {computedShipping === 0 ? 'FREE' : `₹${computedShipping}`}
+                  </span>
                 </div>
                 <div className="flex justify-between text-base md:text-lg font-bold uppercase tracking-wide pt-3 border-t border-gray-200 mt-3">
                   <span>Total</span>
@@ -386,7 +395,11 @@ const Checkout: React.FC = () => {
                 disabled={loading}
                 className="w-full bg-black text-white py-3 md:py-4 font-oswald font-bold uppercase tracking-widest text-sm md:text-lg hover:bg-gray-900 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? 'PROCESSING...' : `PAY ₹${finalTotal}`}
+                {loading
+                  ? 'PROCESSING...'
+                  : paymentMethod === 'cod'
+                    ? `PAY ₹${shippingCost} NOW`
+                    : `PAY ₹${finalTotal}`}
               </button>
 
               {paymentMethod === 'cod' && (

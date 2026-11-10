@@ -27,7 +27,9 @@ import {
   getGiveawayConfigOnce,
   saveGiveawayEntry,
   deleteGiveawayEntry as deleteGiveawayEntryFromFirebase,
-  saveGiveawayConfig
+  saveGiveawayConfig,
+  getCODConfigOnce,
+  saveCODConfig
 } from './firebase';
 
 interface CategoryWithId extends CategoryWithImage {
@@ -91,6 +93,8 @@ interface ShopContextType {
   deleteGiveawayEntry: (entryId: string) => Promise<void>;
   giveawayEnabled: boolean;
   setGiveawayEnabled: (enabled: boolean) => Promise<void>;
+  codEnabled: boolean;
+  setCODEnabled: (enabled: boolean) => Promise<void>;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -110,6 +114,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [giveawayEntries, setGiveawayEntries] = useState<GiveawayEntry[]>([]);
   const [giveawayEnabled, setGiveawayEnabledState] = useState(false);
+  const [codEnabled, setCODEnabledState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
@@ -235,6 +240,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await getGiveawayConfigOnce();
       if (cancelled) return;
       setGiveawayEnabledState(data);
+    })();
+
+    (async () => {
+      const data = await getCODConfigOnce();
+      if (cancelled) return;
+      setCODEnabledState(data);
     })();
 
     const unsubs: (() => void)[] = [];
@@ -634,6 +645,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const setCODEnabled = useCallback(async (enabled: boolean) => {
+    try {
+      await saveCODConfig(enabled);
+    } catch (error) {
+      console.error('[Store] Error saving COD config:', error);
+      throw error;
+    }
+  }, []);
+
   return (
     <ShopContext.Provider value={{
       products,
@@ -672,7 +692,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addGiveawayEntry,
       deleteGiveawayEntry,
       giveawayEnabled,
-      setGiveawayEnabled
+      setGiveawayEnabled,
+      codEnabled,
+      setCODEnabled
     }}>
       {children}
     </ShopContext.Provider>

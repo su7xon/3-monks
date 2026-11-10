@@ -809,6 +809,42 @@ export const saveGiveawayConfig = async (enabled: boolean) => {
   }
 };
 
+const codConfigDoc = doc(db, 'settings', 'cod');
+
+export const getCODConfigOnce = async (): Promise<boolean> => {
+  try {
+    const snapshot = await getDoc(codConfigDoc);
+    return snapshot.exists() ? snapshot.data()?.enabled === true : false;
+  } catch (error) {
+    console.error('[Firebase] Error fetching COD config:', error);
+    return false;
+  }
+};
+
+export const subscribeToCODConfig = (callback: (enabled: boolean) => void) => {
+  return onSnapshot(
+    codConfigDoc,
+    (snapshot) => {
+      const enabled = snapshot.exists() ? snapshot.data()?.enabled === true : false;
+      console.log('[Firebase] COD config loaded, enabled:', enabled);
+      callback(enabled);
+    },
+    (error) => {
+      console.error('[Firebase] Error subscribing to COD config:', error);
+    }
+  );
+};
+
+export const saveCODConfig = async (enabled: boolean) => {
+  try {
+    await setDoc(codConfigDoc, { enabled });
+    console.log('[Firebase] COD config saved, enabled:', enabled);
+  } catch (error) {
+    console.error('[Firebase] Error saving COD config:', error);
+    throw error;
+  }
+};
+
 const statsCollection = collection(db, 'stats');
 
 const dayKey = (date: Date = new Date()) => date.toISOString().slice(0, 10);

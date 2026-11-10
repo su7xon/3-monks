@@ -53,11 +53,9 @@ const Header: React.FC = () => {
           {Array(6).fill(null).map((_, i) => (
             <span key={i} className="mx-6 inline-flex items-center gap-3">
               <span className="text-[#e60000] font-black">✦</span>
-              <span className="text-white font-bold tracking-widest">CASH ON DELIVERY (COD) WILL BE ACCEPTED AFTER DIWALI</span>
+              <span className="text-white font-bold tracking-widest">FREE SHIPPING ON ALL ORDERS</span>
               <span className="text-gray-500">•</span>
-              <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-green-400 font-semibold tracking-wider">FREE SHIPPING ON ALL ORDERS</span>
+              <span className="text-green-400 font-semibold tracking-wider">CASH ON DELIVERY AVAILABLE</span>
             </span>
           ))}
         </div>
@@ -69,11 +67,9 @@ const Header: React.FC = () => {
           {Array(6).fill(null).map((_, i) => (
             <span key={i} className="mx-6 inline-flex items-center gap-3">
               <span className="text-[#e60000] font-black">✦</span>
-              <span className="text-white font-bold tracking-widest">CASH ON DELIVERY (COD) WILL BE ACCEPTED AFTER DIWALI</span>
+              <span className="text-white font-bold tracking-widest">FREE SHIPPING ON ALL ORDERS</span>
               <span className="text-gray-500">•</span>
-              <span className="text-amber-400 font-semibold tracking-wider">CURRENTLY PREPAID ORDERS ONLY</span>
-              <span className="text-gray-500">•</span>
-              <span className="text-green-400 font-semibold tracking-wider">FREE SHIPPING ON ALL ORDERS</span>
+              <span className="text-green-400 font-semibold tracking-wider">CASH ON DELIVERY AVAILABLE</span>
             </span>
           ))}
         </div>
